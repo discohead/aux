@@ -763,12 +763,13 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     public func playNext(trackId: Int) async throws {
         // GUI scripting: reveal track, then click Song > Play Next.
         // Same pattern as getEQ/setEQ — requires Accessibility permissions.
+        // delay 1.0 needed for Music.app to fully select the revealed track.
         let script = """
         tell application "Music"
             set theTrack to (first track of first library playlist whose database ID is \(trackId))
             reveal theTrack
         end tell
-        delay 0.5
+        delay 1.0
         tell application "System Events"
             tell process "Music"
                 click menu item "Play Next" of menu 1 of menu bar item "Song" of menu bar 1
@@ -781,12 +782,13 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     public func addToQueue(trackId: Int) async throws {
         // GUI scripting: reveal track, then click Song > Add to Queue.
         // Same pattern as getEQ/setEQ — requires Accessibility permissions.
+        // delay 1.0 needed for Music.app to fully select the revealed track.
         let script = """
         tell application "Music"
             set theTrack to (first track of first library playlist whose database ID is \(trackId))
             reveal theTrack
         end tell
-        delay 0.5
+        delay 1.0
         tell application "System Events"
             tell process "Music"
                 click menu item "Add to Queue" of menu 1 of menu bar item "Song" of menu bar 1
