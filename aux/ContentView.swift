@@ -6,54 +6,73 @@
 //
 
 import SwiftUI
-import SwiftData
+import MusicKit
+import AuxKit
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var authStatus: MusicAuthorization.Status = MusicAuthorization.currentStatus
+    @State private var isAuthorizing = false
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        VStack(spacing: 20) {
+            Image(systemName: "music.note")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+
+            Text("Aux")
+                .font(.largeTitle.bold())
+
+            Text("Apple Music CLI & App")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+
+            Divider()
+                .frame(width: 200)
+
+            // Auth status
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(authStatus == .authorized ? .green : .orange)
+                    .frame(width: 10, height: 10)
+                Text(authStatusText)
+                    .font(.callout)
+            }
+
+            if authStatus != .authorized {
+                Button("Authorize Apple Music") {
+                    Task {
+                        isAuthorizing = true
+                        let status = await MusicAuthorization.request()
+                        authStatus = status
+                        isAuthorizing = false
                     }
                 }
-                .onDelete(perform: deleteItems)
+                .buttonStyle(.borderedProminent)
+                .disabled(isAuthorizing)
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+
+            Text("v\(Aux.version)")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(40)
+        .frame(minWidth: 300, minHeight: 300)
+        .onAppear {
+            authStatus = MusicAuthorization.currentStatus
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+    private var authStatusText: String {
+        switch authStatus {
+        case .authorized: "Authorized"
+        case .denied: "Access Denied"
+        case .notDetermined: "Not Yet Authorized"
+        case .restricted: "Restricted"
+        @unknown default: "Unknown"
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }

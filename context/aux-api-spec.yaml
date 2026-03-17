@@ -1,0 +1,3341 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  Aux — Apple Music App + CLI API Specification                             ║
+# ║  Canonical mapping: MusicKit + REST API + AppleScript → CLI commands       ║
+# ║  Version: 1.1.0-draft                                                     ║
+# ║  Generated: 2026-03-15                                                     ║
+# ║  Platform: macOS 14.2+ (Sonoma) — required for full MusicLibraryRequest    ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+#
+# VERIFICATION NOTES:
+#   - All MusicKit request types verified against Apple Developer Documentation
+#     and WWDC21/WWDC22 session transcripts.
+#   - macOS availability verified via Apple Developer Forums (threads #711950,
+#     #710322, #736717, #707436, #698902, #696453).
+#   - MusicLibraryRequest confirmed unavailable on macOS 13 (Ventura);
+#     available macOS 14+ (Sonoma); stable on macOS 14.2+.
+#   - ApplicationMusicPlayer and SystemMusicPlayer confirmed @available(macOS,
+#     unavailable) per Apple engineer JoeKun (forum thread #698902).
+#   - MusicLibrary.shared.add() and .createPlaylist() confirmed
+#     @available(macOS, unavailable); use REST API via MusicDataRequest.
+#   - MusicRecentlyPlayedContainerRequest confirmed real via Apple engineer
+#     response (forum thread #696453, iOS 16+/macOS 13+).
+#   - Music.app AppleScript dictionary audited via Doug's AppleScripts reference,
+#     Apple Developer Forums (threads #669239, #694200), mcp-applemusic skill,
+#     and the Music.app .sdef scripting dictionary documentation.
+#   - AppleScript writable track properties verified: name, artist, album artist,
+#     album, genre, year, composer, comments, lyrics, BPM, track/disc number,
+#     compilation, grouping, sort fields, volume adjustment, EQ, start, finish,
+#     enabled, rating, loved, disliked.
+#   - AppleScript artwork read/write confirmed (data of artwork N of track).
+#   - AppleScript `add` (file import), `convert`, `delete`, `reveal`, `search`
+#     commands confirmed. `duplicate current track to source "Library"` for
+#     adding streaming tracks is unreliable per Apple engineer JoeKun
+#     (forum thread #694200).
+
+meta:
+  app_name: Aux
+  cli_command: aux
+  version: "1.1.0"
+  description: >
+    macOS application and CLI that bridges Apple Music — MusicKit framework,
+    REST API, and Music.app AppleScript — to structured JSON over stdio.
+    Aux.app handles authorization and preferences with a native GUI;
+    the aux command provides 88 structured commands for agent consumption.
+  license: MIT
+  platforms:
+    minimum: "macOS 14.2"
+    recommended: "macOS 15.0"
+    rationale: >
+      macOS 14.2 is the minimum for stable MusicLibraryRequest.
+      macOS 15 (Sequoia) adds improved TCC handling for bundled apps.
+  swift_version: "5.10+"
+  dependencies:
+    - name: swift-argument-parser
+      url: "https://github.com/apple/swift-argument-parser.git"
+      version: ">=1.3.0"
+    - name: MusicKit
+      type: system_framework
+      note: "No SPM dependency required; import MusicKit resolves from macOS SDK"
+  app_architecture:
+    model: "VS Code pattern — native app with installable CLI command"
+    app_responsibilities:
+      - "First-run MusicKit authorization (GUI consent dialog)"
+      - "Install aux Command in PATH menu item (symlinks binary)"
+      - "Preferences UI (default output format, storefront, token display)"
+      - "Optional menu bar presence (now-playing, quick controls)"
+    cli_responsibilities:
+      - "All 88 commands with structured JSON output"
+      - "Dual-mode binary: detects headless launch, skips GUI init"
+      - "Agent consumption via bash tool invocation"
+    install_flow:
+      - "User downloads Aux.app, drags to /Applications"
+      - "First launch triggers MusicAuthorization.request() in GUI context"
+      - "Aux menu → Install aux Command in PATH"
+      - "Creates symlink: /usr/local/bin/aux → /Applications/Aux.app/Contents/MacOS/aux"
+  bundle:
+    structure: |
+      Aux.app/
+        Contents/
+          Info.plist
+          MacOS/
+            aux                   ← Dual-mode Swift binary
+          Resources/
+            Assets.xcassets       ← App icon
+          PkgInfo
+          _CodeSignature/
+            CodeResources
+          embedded.provisionprofile
+    entitlements:
+      - com.apple.developer.musickit
+    info_plist:
+      CFBundleName: Aux
+      CFBundleIdentifier: com.yourorg.aux
+      NSAppleMusicUsageDescription: >
+        Aux requires access to Apple Music for catalog search,
+        library management, and playback control.
+
+# ─── Authentication & Authorization ────────────────────────────────────────────
+
+authentication:
+  developer_token:
+    managed_by: MusicKit_framework
+    automatic: true
+    note: >
+      MusicKit on Apple platforms generates and manages developer tokens
+      automatically when the App ID has MusicKit capability enabled.
+      No manual JWT generation is needed for framework-based access.
+    manual_generation:
+      when_needed: "Only if using REST API directly without MusicKit framework"
+      requirements:
+        - Apple Developer Program membership ($99/year)
+        - MusicKit private key (.p8 file) from Certificates, Identifiers & Profiles
+        - 10-character Key ID
+        - 10-character Team ID
+      jwt_spec:
+        algorithm: ES256
+        max_expiration: "180 days"
+        header_fields: [alg, kid]
+        payload_fields: [iss, iat, exp]
+
+  user_token:
+    managed_by: MusicKit_framework
+    automatic: true
+    obtained_via: "MusicAuthorization.request()"
+    note: >
+      Triggers a system-level consent dialog on macOS. Authorization persists
+      in TCC database across launches for bundled apps.
+
+  token_provider:
+    api: "MusicTokenProvider.shared"
+    availability: "macOS 13.0+"
+    exposes:
+      - developerToken
+      - userToken
+
+  entitlements:
+    required:
+      - com.apple.developer.musickit
+    info_plist_keys:
+      - key: NSAppleMusicUsageDescription
+        type: String
+        required: true
+        example: "Aux requires access to Apple Music for catalog and library operations."
+      - key: CFBundleIdentifier
+        type: String
+        required: true
+        example: "com.yourorg.aux"
+
+  app_id_setup:
+    steps:
+      - "Register App ID at developer.apple.com/account"
+      - "Enable MusicKit under App Services"
+      - "Create provisioning profile for macOS"
+      - "Embed profile as embedded.provisionprofile in .app bundle"
+
+# ─── Implementation Layers ─────────────────────────────────────────────────────
+
+implementation_layers:
+  musickit_framework:
+    id: framework
+    description: "Native MusicKit Swift framework — type-safe, automatic tokens, Codable"
+    covers:
+      - Catalog search, browse, charts, suggestions
+      - Library reads (songs, albums, playlists, artists)
+      - Authorization and subscription checks
+      - Personal recommendations, recently played
+      - Storefront information
+
+  rest_api:
+    id: rest
+    description: >
+      Apple Music REST API via MusicDataRequest — automatic token attachment,
+      returns raw Data for custom decoding.
+    covers:
+      - Library writes (create playlist, add to library, add tracks to playlist)
+      - Ratings (set/get)
+      - Any endpoint not covered by structured requests
+    base_url: "https://api.music.apple.com/v1"
+
+  applescript_bridge:
+    id: applescript
+    description: >
+      AppleScript commands to Music.app via NSAppleScript/osascript.
+      The Music.app scripting dictionary (inherited from 20+ years of iTunes)
+      exposes substantial functionality beyond what MusicKit provides on macOS.
+      Required for playback because ApplicationMusicPlayer and SystemMusicPlayer
+      are @available(macOS, unavailable) for native macOS apps. Also the ONLY
+      interface for metadata writing, artwork manipulation, local file import,
+      track deletion, AirPlay control, EQ management, and play statistics access.
+    covers:
+      - Playback control (play, pause, stop, skip, seek, volume, fast forward, rewind)
+      - Now playing status and queue info
+      - Metadata writing (set name, artist, album, genre, year, composer, etc.)
+      - Lyrics read/write
+      - Artwork read/write (raw binary data, multiple artworks per track)
+      - Local file import (add command) and audio conversion (convert command)
+      - Track deletion from library
+      - File path access (location property) and Finder reveal
+      - File-level metadata (bit rate, sample rate, file size, kind, codec)
+      - Play statistics (played count, played date, skipped count, skipped date)
+      - Playlist manipulation (create, delete, rename, reorder tracks, remove tracks)
+      - AirPlay device listing and selection
+      - EQ preset management (list presets, get/set per-track EQ)
+      - Library search with compound predicate filtering (whose clause)
+      - Shuffle mode/enabled and repeat mode control
+      - BPM, start/finish time, volume adjustment, enabled flag per track
+    caveats:
+      - >
+        Streaming tracks (not added to library) may return incomplete properties
+        on some macOS versions. Fixed in Big Sur 11.3 but sporadic issues persist.
+      - >
+        AppleScript is synchronous and single-threaded; bulk operations on large
+        libraries should batch in chunks.
+      - >
+        The AppleScript command for adding streaming tracks to library
+        (duplicate current track to source Library) is unreliable,
+        confirmed by Apple engineer JoeKun in forum thread #694200.
+
+# ─── Global Options ────────────────────────────────────────────────────────────
+
+global_options:
+  - name: "--pretty"
+    short: "-p"
+    type: Bool
+    default: false
+    description: "Pretty-print JSON output with indentation"
+
+  - name: "--raw"
+    short: null
+    type: Bool
+    default: false
+    description: >
+      Output raw MusicKit Codable encoding instead of stable DTOs.
+      Useful for debugging but schema may change between OS versions.
+
+  - name: "--quiet"
+    short: "-q"
+    type: Bool
+    default: false
+    description: "Suppress stderr diagnostic messages"
+
+  - name: "--version"
+    short: "-v"
+    type: Bool
+    default: false
+    description: "Print aux version and exit"
+
+# ─── Exit Codes ────────────────────────────────────────────────────────────────
+
+exit_codes:
+  - code: 0
+    name: success
+    description: "Command completed successfully"
+  - code: 1
+    name: general_failure
+    description: "Unspecified runtime error"
+  - code: 2
+    name: usage_error
+    description: "Invalid arguments, missing required options, or unknown subcommand"
+  - code: 3
+    name: not_found
+    description: "Requested resource not found (empty results for ID-based lookups)"
+  - code: 4
+    name: not_authorized
+    description: "MusicKit authorization denied or not yet requested"
+  - code: 5
+    name: network_error
+    description: "Network request failed (timeout, no connectivity)"
+  - code: 6
+    name: service_error
+    description: "Apple Music API returned an error response"
+  - code: 7
+    name: subscription_required
+    description: "Operation requires active Apple Music subscription"
+  - code: 8
+    name: unavailable
+    description: "Feature unavailable on current macOS version"
+
+# ─── Output Envelope ───────────────────────────────────────────────────────────
+
+output_envelope:
+  description: >
+    Every successful command emits exactly one JSON object to stdout.
+    Errors emit a CLIErrorResponse JSON to stdout AND a human-readable
+    message to stderr for human consumers.
+  success_schema:
+    type: object
+    properties:
+      data:
+        description: "Command-specific result payload (object, array, or scalar)"
+      meta:
+        type: object
+        nullable: true
+        properties:
+          limit: { type: integer, nullable: true }
+          offset: { type: integer, nullable: true }
+          total: { type: integer, nullable: true }
+          has_next: { type: boolean, nullable: true }
+  error_schema:
+    type: object
+    properties:
+      error:
+        type: object
+        properties:
+          code: { type: string, description: "Machine-readable error code" }
+          message: { type: string, description: "Human-readable error description" }
+          details: { type: object, nullable: true }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMMAND GROUPS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+commands:
+
+  # ─── AUTH ───────────────────────────────────────────────────────────────────
+
+  auth:
+    description: "Manage MusicKit authorization and subscription status"
+
+    subcommands:
+
+      status:
+        description: "Check current MusicKit authorization and Apple Music subscription status"
+        musickit_api:
+          authorization: "MusicAuthorization.currentStatus"
+          subscription: "MusicSubscription.current"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            authorization_status:
+              type: string
+              enum: [authorized, denied, not_determined, restricted]
+            subscription:
+              type: object
+              nullable: true
+              properties:
+                can_play_catalog_content: { type: boolean }
+                can_become_subscriber: { type: boolean }
+                has_cloud_library_enabled: { type: boolean }
+                # NOTE: MusicSubscription.OfferOptions properties are
+                # iOS-only for subscription offer presentation.
+
+      request:
+        description: >
+          Request MusicKit authorization. Triggers system-level consent dialog.
+          Authorization persists in TCC database for bundled apps.
+        musickit_api: "MusicAuthorization.request()"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            authorization_status:
+              type: string
+              enum: [authorized, denied, not_determined, restricted]
+
+      token:
+        description: "Retrieve current developer and user tokens (for debugging/external use)"
+        musickit_api: "MusicTokenProvider.shared"
+        layer: framework
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--type"
+            short: "-t"
+            type: string
+            required: false
+            default: "both"
+            enum: [developer, user, both]
+            description: "Which token(s) to retrieve"
+        output_schema:
+          type: object
+          properties:
+            developer_token: { type: string, nullable: true }
+            user_token: { type: string, nullable: true }
+
+  # ─── SEARCH ────────────────────────────────────────────────────────────────
+
+  search:
+    description: "Search the Apple Music catalog"
+    musickit_api: "MusicCatalogSearchRequest"
+    layer: framework
+    availability: "macOS 12.0+"
+
+    subcommands:
+
+      songs:
+        description: "Search catalog for songs"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [Song.self])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "SongDTO[]"
+          ref: "#/schemas/SongDTO"
+
+      albums:
+        description: "Search catalog for albums"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [Album.self])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "AlbumDTO[]"
+          ref: "#/schemas/AlbumDTO"
+
+      artists:
+        description: "Search catalog for artists"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [Artist.self])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "ArtistDTO[]"
+          ref: "#/schemas/ArtistDTO"
+
+      playlists:
+        description: "Search catalog for playlists"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [Playlist.self])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "PlaylistDTO[]"
+          ref: "#/schemas/PlaylistDTO"
+
+      music-videos:
+        description: "Search catalog for music videos"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [MusicVideo.self])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "MusicVideoDTO[]"
+          ref: "#/schemas/MusicVideoDTO"
+
+      stations:
+        description: "Search catalog for stations"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [Station.self])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "StationDTO[]"
+          ref: "#/schemas/StationDTO"
+
+      curators:
+        description: "Search catalog for curators"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [Curator.self])"
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "CuratorDTO[]"
+          ref: "#/schemas/CuratorDTO"
+
+      radio-shows:
+        description: "Search catalog for radio shows"
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [RadioShow.self])"
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "RadioShowDTO[]"
+          ref: "#/schemas/RadioShowDTO"
+
+      all:
+        description: >
+          Search catalog across multiple types simultaneously.
+          Optionally includes top results ranked by relevance (macOS 13+).
+        musickit_api: "MusicCatalogSearchRequest(term:, types: [...])"
+        requires_auth: true
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--types"
+            short: "-t"
+            type: "String (comma-separated)"
+            required: false
+            default: "songs,albums,artists,playlists"
+            enum_values: [songs, albums, artists, playlists, music-videos, stations, curators, radio-shows]
+            description: "Comma-separated list of resource types to search"
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum number of results per type"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+          - name: "--top-results"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            availability: "macOS 13.0+"
+            description: "Include top results ranked by relevance across all types"
+        output_schema:
+          type: object
+          properties:
+            songs: { type: "SongDTO[]", nullable: true }
+            albums: { type: "AlbumDTO[]", nullable: true }
+            artists: { type: "ArtistDTO[]", nullable: true }
+            playlists: { type: "PlaylistDTO[]", nullable: true }
+            music_videos: { type: "MusicVideoDTO[]", nullable: true }
+            stations: { type: "StationDTO[]", nullable: true }
+            curators: { type: "CuratorDTO[]", nullable: true }
+            radio_shows: { type: "RadioShowDTO[]", nullable: true }
+            top_results: { type: "TopResultDTO[]", nullable: true }
+
+      suggestions:
+        description: "Get search suggestions and autocomplete terms for a query"
+        musickit_api: "MusicCatalogSearchSuggestionsRequest(term:, types: [...])"
+        layer: framework
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments:
+          - name: term
+            type: String
+            required: true
+            positional: true
+            description: "Partial search term for suggestions"
+        options:
+          - name: "--types"
+            short: "-t"
+            type: "String (comma-separated)"
+            required: false
+            default: "songs,albums,artists"
+            description: "Resource types to include in suggestions"
+        output_schema:
+          type: object
+          properties:
+            suggestions:
+              type: array
+              items:
+                type: object
+                properties:
+                  display_term: { type: string }
+                  search_term: { type: string }
+                  kind: { type: string, enum: [term, topResult] }
+            top_results:
+              type: array
+              nullable: true
+              items:
+                type: object
+                properties:
+                  type: { type: string }
+                  id: { type: string }
+                  title: { type: string }
+
+  # ─── CATALOG ───────────────────────────────────────────────────────────────
+
+  catalog:
+    description: "Fetch specific resources from the Apple Music catalog by ID"
+
+    subcommands:
+
+      song:
+        description: "Fetch a specific song by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<Song>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog song ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [artists, albums, genres, station, music-videos, composer]
+            description: "Relationships to eagerly load via .properties"
+        output_schema:
+          data_type: "SongDTO"
+          ref: "#/schemas/SongDTO"
+
+      song-by-isrc:
+        description: "Fetch a song by ISRC (International Standard Recording Code)"
+        musickit_api: "MusicCatalogResourceRequest<Song>(matching: \\.isrc, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: isrc
+            type: String
+            required: true
+            positional: true
+            description: "ISRC code (e.g. USUM71703861)"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [artists, albums, genres]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "SongDTO[]"
+          ref: "#/schemas/SongDTO"
+          note: "May return multiple songs matching the ISRC"
+
+      album:
+        description: "Fetch a specific album by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<Album>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog album ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [tracks, artists, genres, related-albums, record-labels]
+            description: "Relationships to eagerly load"
+          - name: "--with-audio-variants"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            availability: "macOS 13.0+"
+            description: "Load audioVariants extended attribute (Spatial Audio, Lossless, etc.)"
+        output_schema:
+          data_type: "AlbumDTO"
+          ref: "#/schemas/AlbumDTO"
+
+      album-by-upc:
+        description: "Fetch an album by UPC (Universal Product Code)"
+        musickit_api: "MusicCatalogResourceRequest<Album>(matching: \\.upc, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: upc
+            type: String
+            required: true
+            positional: true
+            description: "UPC barcode value"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [tracks, artists, genres]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "AlbumDTO[]"
+          ref: "#/schemas/AlbumDTO"
+
+      artist:
+        description: "Fetch a specific artist by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<Artist>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog artist ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [albums, top-songs, genres, music-videos, playlists, station, similar-artists]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "ArtistDTO"
+          ref: "#/schemas/ArtistDTO"
+
+      playlist:
+        description: "Fetch a specific playlist by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<Playlist>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog playlist ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [tracks, curator, featured-artists]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "PlaylistDTO"
+          ref: "#/schemas/PlaylistDTO"
+
+      music-video:
+        description: "Fetch a specific music video by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<MusicVideo>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog music video ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [artists, albums, genres]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "MusicVideoDTO"
+          ref: "#/schemas/MusicVideoDTO"
+
+      station:
+        description: "Fetch a specific station by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<Station>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog station ID"
+        options: []
+        output_schema:
+          data_type: "StationDTO"
+          ref: "#/schemas/StationDTO"
+
+      curator:
+        description: "Fetch a specific curator by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<Curator>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog curator ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [playlists]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "CuratorDTO"
+          ref: "#/schemas/CuratorDTO"
+
+      radio-show:
+        description: "Fetch a specific radio show by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<RadioShow>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog radio show ID"
+        options: []
+        output_schema:
+          data_type: "RadioShowDTO"
+          ref: "#/schemas/RadioShowDTO"
+
+      record-label:
+        description: "Fetch a specific record label by catalog ID"
+        musickit_api: "MusicCatalogResourceRequest<RecordLabel>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music catalog record label ID"
+        options:
+          - name: "--include"
+            short: "-i"
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            enum_values: [top-releases, latest-releases]
+            description: "Relationships to eagerly load"
+        output_schema:
+          data_type: "RecordLabelDTO"
+          ref: "#/schemas/RecordLabelDTO"
+
+      genre:
+        description: "Fetch a specific genre by ID"
+        musickit_api: "MusicCatalogResourceRequest<Genre>(matching: \\.id, equalTo:)"
+        layer: framework
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Apple Music genre ID"
+        options: []
+        output_schema:
+          data_type: "GenreDTO"
+          ref: "#/schemas/GenreDTO"
+
+      genres:
+        description: "Fetch all top-level genres"
+        musickit_api: "MusicDataRequest with URL /v1/catalog/{storefront}/genres"
+        layer: rest
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments: []
+        options: []
+        output_schema:
+          data_type: "GenreDTO[]"
+          ref: "#/schemas/GenreDTO"
+
+      charts:
+        description: "Fetch Apple Music charts (most played, daily global top, city top)"
+        musickit_api: "MusicCatalogChartsRequest"
+        layer: framework
+        availability: "macOS 13.0+"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--kinds"
+            short: "-k"
+            type: "String (comma-separated)"
+            required: false
+            default: "most-played"
+            enum_values: [most-played, daily-global-top, city-top]
+            description: "Chart kinds to fetch"
+          - name: "--types"
+            short: "-t"
+            type: "String (comma-separated)"
+            required: false
+            default: "songs"
+            enum_values: [songs, albums, playlists, music-videos]
+            description: "Content types to chart"
+          - name: "--genre"
+            short: "-g"
+            type: String
+            required: false
+            default: null
+            description: "Genre ID to filter charts"
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 25
+            range: [1, 200]
+            description: "Maximum items per chart"
+        output_schema:
+          type: object
+          properties:
+            song_charts:
+              type: "ChartDTO<SongDTO>[]"
+              nullable: true
+            album_charts:
+              type: "ChartDTO<AlbumDTO>[]"
+              nullable: true
+            playlist_charts:
+              type: "ChartDTO<PlaylistDTO>[]"
+              nullable: true
+            music_video_charts:
+              type: "ChartDTO<MusicVideoDTO>[]"
+              nullable: true
+
+      storefront:
+        description: "Get current user's storefront or a specific storefront by ID"
+        musickit_api: "MusicDataRequest with /v1/storefronts or MusicKit.Storefront"
+        layer: rest
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: false
+            positional: true
+            description: "Storefront ID (e.g. 'us', 'gb'). Omit for current user's storefront."
+        options: []
+        output_schema:
+          data_type: "StorefrontDTO"
+          ref: "#/schemas/StorefrontDTO"
+
+  # ─── LIBRARY ───────────────────────────────────────────────────────────────
+
+  library:
+    description: "Access and manage the user's music library"
+
+    subcommands:
+
+      songs:
+        description: "List songs in user's library"
+        musickit_api: "MusicLibraryRequest<Song>"
+        layer: framework
+        availability: "macOS 14.0+ (stable 14.2+)"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 25
+            range: [1, 100]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+          - name: "--sort"
+            short: "-s"
+            type: String
+            required: false
+            default: null
+            enum: [title, artist-name, album-title, date-added]
+            description: "Sort field. Prefix with '-' for descending (e.g. '-date-added')"
+          - name: "--filter-title"
+            short: null
+            type: String
+            required: false
+            default: null
+            description: "Filter by exact title match"
+          - name: "--filter-artist"
+            short: null
+            type: String
+            required: false
+            default: null
+            description: "Filter by artist name"
+          - name: "--filter-album"
+            short: null
+            type: String
+            required: false
+            default: null
+            description: "Filter by album title"
+          - name: "--downloaded-only"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Only include downloaded content"
+        output_schema:
+          data_type: "SongDTO[]"
+          ref: "#/schemas/SongDTO"
+
+      albums:
+        description: "List albums in user's library"
+        musickit_api: "MusicLibraryRequest<Album>"
+        layer: framework
+        availability: "macOS 14.0+ (stable 14.2+)"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 25
+            range: [1, 100]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+          - name: "--sort"
+            short: "-s"
+            type: String
+            required: false
+            default: null
+            enum: [title, artist-name, date-added]
+            description: "Sort field"
+          - name: "--filter-title"
+            short: null
+            type: String
+            required: false
+            default: null
+            description: "Filter by exact album title"
+          - name: "--filter-artist"
+            short: null
+            type: String
+            required: false
+            default: null
+            description: "Filter by artist name"
+          - name: "--filter-is-compilation"
+            short: null
+            type: Bool
+            required: false
+            default: null
+            description: "Filter compilations (true) or non-compilations (false)"
+          - name: "--downloaded-only"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Only include downloaded content"
+        output_schema:
+          data_type: "AlbumDTO[]"
+          ref: "#/schemas/AlbumDTO"
+
+      artists:
+        description: "List artists in user's library"
+        musickit_api: "MusicLibraryRequest<Artist>"
+        layer: framework
+        availability: "macOS 14.0+ (stable 14.2+)"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 25
+            range: [1, 100]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+          - name: "--sort"
+            short: "-s"
+            type: String
+            required: false
+            default: null
+            enum: [name]
+            description: "Sort field"
+        output_schema:
+          data_type: "ArtistDTO[]"
+          ref: "#/schemas/ArtistDTO"
+
+      playlists:
+        description: "List playlists in user's library"
+        musickit_api: "MusicLibraryRequest<Playlist>"
+        layer: framework
+        availability: "macOS 14.0+ (stable 14.2+)"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 25
+            range: [1, 100]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+          - name: "--include-tracks"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Include track listing for each playlist"
+        output_schema:
+          data_type: "PlaylistDTO[]"
+          ref: "#/schemas/PlaylistDTO"
+
+      music-videos:
+        description: "List music videos in user's library"
+        musickit_api: "MusicLibraryRequest<MusicVideo>"
+        layer: framework
+        availability: "macOS 14.0+ (stable 14.2+)"
+        requires_auth: true
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 25
+            range: [1, 100]
+            description: "Maximum number of results"
+          - name: "--offset"
+            short: "-o"
+            type: Int
+            required: false
+            default: 0
+            description: "Results offset for pagination"
+        output_schema:
+          data_type: "MusicVideoDTO[]"
+          ref: "#/schemas/MusicVideoDTO"
+
+      search:
+        description: "Search within user's library"
+        musickit_api: "MusicLibrarySearchRequest(term:, types: [...])"
+        layer: framework
+        availability: "macOS 14.0+ (stable 14.2+)"
+        requires_auth: true
+        note: >
+          MusicLibrarySearchRequest availability matches MusicLibraryRequest.
+          For macOS 13 users, falls back to REST API endpoint
+          GET /v1/me/library/search.
+        arguments:
+          - name: query
+            type: String
+            required: true
+            positional: true
+            description: "Search term"
+        options:
+          - name: "--types"
+            short: "-t"
+            type: "String (comma-separated)"
+            required: false
+            default: "songs,albums,artists,playlists"
+            enum_values: [songs, albums, artists, playlists, music-videos]
+            description: "Library resource types to search"
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 25]
+            description: "Maximum results per type"
+        output_schema:
+          type: object
+          properties:
+            songs: { type: "SongDTO[]", nullable: true }
+            albums: { type: "AlbumDTO[]", nullable: true }
+            artists: { type: "ArtistDTO[]", nullable: true }
+            playlists: { type: "PlaylistDTO[]", nullable: true }
+            music_videos: { type: "MusicVideoDTO[]", nullable: true }
+
+      add:
+        description: "Add catalog items to user's library"
+        musickit_api: "MusicDataRequest POST /v1/me/library"
+        layer: rest
+        availability: "macOS 12.0+"
+        requires_auth: true
+        note: >
+          MusicLibrary.shared.add() is @available(macOS, unavailable).
+          Uses REST API via MusicDataRequest with automatic token attachment.
+          Query parameters: ids[songs]=, ids[albums]=, ids[playlists]=, ids[music-videos]=
+        arguments:
+          - name: ids
+            type: "String (comma-separated or space-separated)"
+            required: true
+            positional: true
+            variadic: true
+            description: "One or more catalog IDs to add"
+        options:
+          - name: "--type"
+            short: "-t"
+            type: String
+            required: true
+            enum: [songs, albums, playlists, music-videos]
+            description: "Type of resources being added"
+        output_schema:
+          type: object
+          properties:
+            added: { type: boolean }
+            ids: { type: "string[]" }
+            type: { type: string }
+
+      create-playlist:
+        description: "Create a new playlist in user's library"
+        musickit_api: "MusicDataRequest POST /v1/me/library/playlists"
+        layer: rest
+        availability: "macOS 12.0+"
+        requires_auth: true
+        note: >
+          MusicLibrary.shared.createPlaylist() is @available(macOS, unavailable).
+          Uses REST API via MusicDataRequest.
+        arguments:
+          - name: name
+            type: String
+            required: true
+            positional: true
+            description: "Playlist name"
+        options:
+          - name: "--description"
+            short: "-d"
+            type: String
+            required: false
+            default: null
+            description: "Playlist description"
+          - name: "--tracks"
+            short: null
+            type: "String (comma-separated)"
+            required: false
+            default: null
+            description: "Catalog song IDs to add as initial tracks"
+        output_schema:
+          type: object
+          properties:
+            id: { type: string, description: "Library playlist ID of the created playlist" }
+            name: { type: string }
+            description: { type: string, nullable: true }
+
+      add-to-playlist:
+        description: "Add tracks to an existing library playlist"
+        musickit_api: "MusicDataRequest POST /v1/me/library/playlists/{id}/tracks"
+        layer: rest
+        availability: "macOS 12.0+"
+        requires_auth: true
+        arguments:
+          - name: playlist-id
+            type: String
+            required: true
+            positional: true
+            description: "Library playlist ID"
+          - name: track-ids
+            type: "String (space-separated)"
+            required: true
+            positional: true
+            variadic: true
+            description: "Catalog song IDs to add"
+        options: []
+        output_schema:
+          type: object
+          properties:
+            added: { type: boolean }
+            playlist_id: { type: string }
+            track_ids: { type: "string[]" }
+
+      # ── AppleScript-exclusive library operations ──────────────────────
+
+      import:
+        description: >
+          Import local audio files into Music.app library.
+          MusicKit has no file import capability; this is AppleScript-only.
+        musickit_api: "AppleScript: tell application \"Music\" to add (POSIX file path)"
+        layer: applescript
+        availability: "macOS 10.15+"
+        requires_auth: false
+        note: >
+          Uses the AppleScript 'add' command. Audio CD tracks will be imported
+          (ripped). Regular audio files are copied or referenced depending on
+          Music.app's "Copy files to Music Media folder" preference.
+        arguments:
+          - name: paths
+            type: "String (space-separated)"
+            required: true
+            positional: true
+            variadic: true
+            description: "One or more file paths to import (absolute POSIX paths)"
+        options:
+          - name: "--to-playlist"
+            short: null
+            type: String
+            required: false
+            default: null
+            description: "Name of playlist to also add imported tracks to"
+        output_schema:
+          type: object
+          properties:
+            imported: { type: boolean }
+            file_count: { type: integer }
+            tracks:
+              type: array
+              nullable: true
+              items:
+                type: object
+                properties:
+                  database_id: { type: integer }
+                  name: { type: string }
+                  file_path: { type: string }
+
+      tag:
+        description: >
+          Read or write metadata tags on library tracks. MusicKit is entirely
+          read-only for metadata; AppleScript is the only interface that can
+          SET track properties like name, artist, genre, BPM, lyrics, etc.
+        layer: applescript
+        availability: "macOS 10.15+"
+        requires_auth: false
+
+        subcommands:
+
+          get:
+            description: "Read all metadata tags from a library track"
+            musickit_api: "AppleScript: get properties of track"
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID of the track"
+            options: []
+            output_schema:
+              data_type: "TrackTagsDTO"
+              ref: "#/schemas/TrackTagsDTO"
+
+          set:
+            description: >
+              Write metadata tags on a library track. Accepts one or more
+              --field key=value pairs. Only works on local/library tracks,
+              not streaming-only Apple Music tracks.
+            musickit_api: "AppleScript: set <property> of track to <value>"
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID of the track"
+            options:
+              - name: "--field"
+                short: "-f"
+                type: "String (key=value, repeatable)"
+                required: true
+                repeatable: true
+                description: >
+                  Tag field and value to set. Can be specified multiple times.
+                  Valid keys: name, artist, album-artist, album, genre, year,
+                  composer, comments, grouping, track-number, track-count,
+                  disc-number, disc-count, bpm, compilation (true/false),
+                  rating (0-100), loved (true/false), disliked (true/false),
+                  enabled (true/false), volume-adjustment (-100 to 100),
+                  start (seconds), finish (seconds), sort-name, sort-artist,
+                  sort-album-artist, sort-album, sort-composer, eq
+            output_schema:
+              type: object
+              properties:
+                updated: { type: boolean }
+                database_id: { type: integer }
+                fields_set: { type: "string[]" }
+
+          batch-set:
+            description: >
+              Write the same tag value to multiple tracks at once. Useful for
+              bulk retagging operations (e.g., setting genre on 50 tracks).
+            musickit_api: "AppleScript: repeat with t in tracks / set property of t"
+            arguments:
+              - name: track-ids
+                type: "Integer (space-separated)"
+                required: true
+                positional: true
+                variadic: true
+                description: "Music.app database IDs"
+            options:
+              - name: "--field"
+                short: "-f"
+                type: "String (key=value, repeatable)"
+                required: true
+                repeatable: true
+                description: "Tag field(s) and value(s) to set on all tracks"
+            output_schema:
+              type: object
+              properties:
+                updated: { type: boolean }
+                track_count: { type: integer }
+                fields_set: { type: "string[]" }
+
+      lyrics:
+        description: "Read or write lyrics on a library track"
+        layer: applescript
+        availability: "macOS 10.15+"
+
+        subcommands:
+
+          get:
+            description: "Read lyrics text from a library track"
+            musickit_api: "AppleScript: get lyrics of track"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                database_id: { type: integer }
+                lyrics: { type: string, nullable: true }
+
+          set:
+            description: "Write lyrics text to a library track"
+            musickit_api: "AppleScript: set lyrics of track to"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options:
+              - name: "--text"
+                short: null
+                type: String
+                required: false
+                description: "Lyrics text (use \\n for line breaks)"
+              - name: "--stdin"
+                short: null
+                type: Bool
+                required: false
+                default: false
+                description: "Read lyrics text from stdin (for multi-line content)"
+              - name: "--file"
+                short: null
+                type: String
+                required: false
+                description: "Read lyrics from a text file at this path"
+            output_schema:
+              type: object
+              properties:
+                updated: { type: boolean }
+                database_id: { type: integer }
+
+      artwork:
+        description: >
+          Read or write artwork on library tracks. AppleScript provides raw
+          binary artwork data access. MusicKit only provides CDN URLs.
+        layer: applescript
+        availability: "macOS 10.15+"
+
+        subcommands:
+
+          get:
+            description: "Export artwork from a library track to a file"
+            musickit_api: "AppleScript: get raw data of artwork 1 of track"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options:
+              - name: "--output"
+                short: "-o"
+                type: String
+                required: false
+                default: null
+                description: "Output file path. If omitted, writes to stdout as base64."
+              - name: "--index"
+                short: null
+                type: Integer
+                required: false
+                default: 1
+                description: "Artwork index (tracks can have multiple artworks)"
+            output_schema:
+              type: object
+              properties:
+                database_id: { type: integer }
+                artwork_count: { type: integer }
+                format: { type: string, description: "JPEG, PNG, etc." }
+                file_path: { type: string, nullable: true, description: "Path if --output used" }
+                data_base64: { type: string, nullable: true, description: "Base64 if no --output" }
+
+          set:
+            description: "Set artwork on a library track from an image file"
+            musickit_api: "AppleScript: set data of artwork 1 of track to (read file as picture)"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+              - name: image-path
+                type: String
+                required: true
+                positional: true
+                description: "Path to image file (JPEG or PNG)"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                updated: { type: boolean }
+                database_id: { type: integer }
+
+          count:
+            description: "Get the number of artworks attached to a track"
+            musickit_api: "AppleScript: count of artworks of track"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                database_id: { type: integer }
+                artwork_count: { type: integer }
+
+      file-info:
+        description: >
+          Get file-level metadata for library tracks. Exposes properties
+          unavailable through MusicKit: file path, bit rate, sample rate,
+          file size, codec, and kind.
+        musickit_api: "AppleScript: get {location, bit rate, sample rate, size, kind} of track"
+        layer: applescript
+        availability: "macOS 10.15+"
+        requires_auth: false
+        arguments:
+          - name: track-id
+            type: Integer
+            required: true
+            positional: true
+            description: "Music.app database ID"
+        options: []
+        output_schema:
+          data_type: "FileInfoDTO"
+          ref: "#/schemas/FileInfoDTO"
+
+      reveal:
+        description: "Reveal a library track's file in Finder"
+        musickit_api: "AppleScript: tell application \"Music\" to reveal track"
+        layer: applescript
+        availability: "macOS 10.15+"
+        requires_auth: false
+        note: "Opens a Finder window with the track's audio file selected"
+        arguments:
+          - name: track-id
+            type: Integer
+            required: true
+            positional: true
+            description: "Music.app database ID"
+        options: []
+        output_schema:
+          type: object
+          properties:
+            revealed: { type: boolean }
+            file_path: { type: string, nullable: true }
+
+      delete:
+        description: >
+          Delete tracks from the library. Neither MusicKit framework nor
+          the REST API expose a delete operation. AppleScript-only.
+        musickit_api: "AppleScript: delete track"
+        layer: applescript
+        availability: "macOS 10.15+"
+        requires_auth: false
+        note: >
+          Deletes the track from the library. Whether the file is also
+          trashed depends on Music.app preferences. Use with caution.
+        arguments:
+          - name: track-ids
+            type: "Integer (space-separated)"
+            required: true
+            positional: true
+            variadic: true
+            description: "Music.app database IDs of tracks to delete"
+        options:
+          - name: "--confirm"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Skip confirmation prompt (for agent/scripted use)"
+        output_schema:
+          type: object
+          properties:
+            deleted: { type: boolean }
+            count: { type: integer }
+
+      convert:
+        description: >
+          Convert tracks using the currently configured encoder in Music.app
+          (AAC, AIFF, ALAC, MP3, WAV). AppleScript-only capability.
+        musickit_api: "AppleScript: convert track"
+        layer: applescript
+        availability: "macOS 10.15+"
+        requires_auth: false
+        note: >
+          Uses whatever encoder is set in Music.app Preferences → Files →
+          Import Settings. Returns a reference to the newly converted track.
+        arguments:
+          - name: track-ids
+            type: "Integer (space-separated)"
+            required: true
+            positional: true
+            variadic: true
+            description: "Music.app database IDs of tracks to convert"
+        options: []
+        output_schema:
+          type: object
+          properties:
+            converted: { type: boolean }
+            tracks:
+              type: array
+              items:
+                type: object
+                properties:
+                  source_database_id: { type: integer }
+                  new_database_id: { type: integer }
+                  new_file_path: { type: string }
+
+      stats:
+        description: >
+          Read or write play statistics on library tracks. MusicKit exposes
+          playCount and lastPlayedDate as read-only. AppleScript can both
+          read and write played count, played date, skipped count, skipped date.
+        layer: applescript
+        availability: "macOS 10.15+"
+
+        subcommands:
+
+          get:
+            description: "Get play statistics for a library track"
+            musickit_api: "AppleScript: get {played count, played date, skipped count, skipped date} of track"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options: []
+            output_schema:
+              data_type: "PlayStatsDTO"
+              ref: "#/schemas/PlayStatsDTO"
+
+          set:
+            description: >
+              Set play statistics on a library track. Useful for migrating
+              play history or resetting counts.
+            musickit_api: "AppleScript: set played count/date of track to"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options:
+              - name: "--played-count"
+                short: null
+                type: Integer
+                required: false
+                description: "Set played count"
+              - name: "--played-date"
+                short: null
+                type: String
+                required: false
+                description: "Set last played date (ISO 8601)"
+              - name: "--skipped-count"
+                short: null
+                type: Integer
+                required: false
+                description: "Set skipped count"
+              - name: "--skipped-date"
+                short: null
+                type: String
+                required: false
+                description: "Set last skipped date (ISO 8601)"
+            output_schema:
+              type: object
+              properties:
+                updated: { type: boolean }
+                database_id: { type: integer }
+
+          reset:
+            description: "Reset all play statistics to zero/null for given tracks"
+            musickit_api: "AppleScript: set played count to 0, etc."
+            requires_auth: false
+            arguments:
+              - name: track-ids
+                type: "Integer (space-separated)"
+                required: true
+                positional: true
+                variadic: true
+                description: "Music.app database IDs"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                reset: { type: boolean }
+                count: { type: integer }
+
+      playlist-manage:
+        description: >
+          Advanced playlist manipulation via AppleScript. The REST API can
+          only create playlists and append tracks. AppleScript can also
+          delete playlists, rename them, reorder tracks, and remove
+          individual tracks.
+        layer: applescript
+        availability: "macOS 10.15+"
+
+        subcommands:
+
+          delete-playlist:
+            description: "Delete a user playlist from the library"
+            musickit_api: "AppleScript: delete user playlist"
+            requires_auth: false
+            note: "Cannot delete smart playlists or Apple-generated playlists"
+            arguments:
+              - name: name
+                type: String
+                required: true
+                positional: true
+                description: "Playlist name"
+            options:
+              - name: "--confirm"
+                short: null
+                type: Bool
+                required: false
+                default: false
+                description: "Skip confirmation prompt"
+            output_schema:
+              type: object
+              properties:
+                deleted: { type: boolean }
+                name: { type: string }
+
+          rename-playlist:
+            description: "Rename a user playlist"
+            musickit_api: "AppleScript: set name of user playlist to"
+            requires_auth: false
+            arguments:
+              - name: old-name
+                type: String
+                required: true
+                positional: true
+                description: "Current playlist name"
+              - name: new-name
+                type: String
+                required: true
+                positional: true
+                description: "New playlist name"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                renamed: { type: boolean }
+                old_name: { type: string }
+                new_name: { type: string }
+
+          remove-tracks:
+            description: "Remove specific tracks from a playlist (without deleting from library)"
+            musickit_api: "AppleScript: delete track N of user playlist"
+            requires_auth: false
+            arguments:
+              - name: playlist-name
+                type: String
+                required: true
+                positional: true
+                description: "Playlist name"
+            options:
+              - name: "--track-indices"
+                short: null
+                type: "Integer (comma-separated)"
+                required: false
+                description: "1-based track indices to remove"
+              - name: "--track-database-ids"
+                short: null
+                type: "Integer (comma-separated)"
+                required: false
+                description: "Database IDs of tracks to remove"
+            output_schema:
+              type: object
+              properties:
+                removed: { type: boolean }
+                count: { type: integer }
+                playlist_name: { type: string }
+
+          reorder:
+            description: "Move a track within a playlist to a new position"
+            musickit_api: "AppleScript: move track N of playlist to end of playlist"
+            requires_auth: false
+            arguments:
+              - name: playlist-name
+                type: String
+                required: true
+                positional: true
+                description: "Playlist name"
+            options:
+              - name: "--from"
+                short: null
+                type: Integer
+                required: true
+                description: "Current 1-based track index"
+              - name: "--to"
+                short: null
+                type: String
+                required: true
+                description: "Target position: integer index, 'beginning', or 'end'"
+            output_schema:
+              type: object
+              properties:
+                reordered: { type: boolean }
+                playlist_name: { type: string }
+
+          duplicate-tracks:
+            description: "Copy tracks from one playlist to another"
+            musickit_api: "AppleScript: duplicate track to end of user playlist"
+            requires_auth: false
+            arguments:
+              - name: source-playlist
+                type: String
+                required: true
+                positional: true
+                description: "Source playlist name"
+              - name: target-playlist
+                type: String
+                required: true
+                positional: true
+                description: "Target playlist name"
+            options:
+              - name: "--track-indices"
+                short: null
+                type: "Integer (comma-separated)"
+                required: false
+                description: "Specific 1-based indices to copy. Omit for all tracks."
+            output_schema:
+              type: object
+              properties:
+                duplicated: { type: boolean }
+                count: { type: integer }
+
+          list-all:
+            description: "List all playlists with metadata (name, track count, duration, kind)"
+            musickit_api: "AppleScript: get {name, duration, count of tracks} of every user playlist"
+            requires_auth: false
+            arguments: []
+            options:
+              - name: "--include-smart"
+                short: null
+                type: Bool
+                required: false
+                default: true
+                description: "Include smart playlists"
+              - name: "--include-folders"
+                short: null
+                type: Bool
+                required: false
+                default: false
+                description: "Include playlist folders"
+            output_schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  track_count: { type: integer }
+                  total_duration_seconds: { type: number }
+                  is_smart: { type: boolean }
+                  is_folder: { type: boolean }
+
+  playback:
+    description: >
+      Control Music.app playback via AppleScript bridge.
+      ApplicationMusicPlayer and SystemMusicPlayer are @available(macOS, unavailable)
+      for native macOS apps.
+    layer: applescript
+
+    subcommands:
+
+      play:
+        description: "Start or resume playback, optionally playing a specific item"
+        musickit_api: "AppleScript: tell application \"Music\" to play"
+        requires_auth: false
+        note: "Music.app must be running or will be launched automatically by AppleScript"
+        arguments:
+          - name: id
+            type: String
+            required: false
+            positional: true
+            description: "Optional catalog ID to play. If omitted, resumes current playback."
+        options:
+          - name: "--type"
+            short: "-t"
+            type: String
+            required: false
+            default: "song"
+            enum: [song, album, playlist]
+            description: "Type of item to play (only used when id is provided)"
+            note: >
+              For catalog IDs, uses 'open location' AppleScript with
+              music:// URL scheme or adds to queue via REST then plays.
+          - name: "--shuffle"
+            short: null
+            type: Bool
+            required: false
+            default: null
+            description: "Enable shuffle mode before playing"
+        output_schema:
+          type: object
+          properties:
+            state: { type: string, enum: [playing] }
+            item_id: { type: string, nullable: true }
+
+      pause:
+        description: "Pause playback"
+        musickit_api: "AppleScript: tell application \"Music\" to pause"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            state: { type: string, enum: [paused] }
+
+      stop:
+        description: "Stop playback"
+        musickit_api: "AppleScript: tell application \"Music\" to stop"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            state: { type: string, enum: [stopped] }
+
+      next:
+        description: "Skip to next track"
+        musickit_api: "AppleScript: tell application \"Music\" to next track"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          data_type: "NowPlayingDTO"
+          ref: "#/schemas/NowPlayingDTO"
+
+      previous:
+        description: "Go to previous track"
+        musickit_api: "AppleScript: tell application \"Music\" to previous track"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          data_type: "NowPlayingDTO"
+          ref: "#/schemas/NowPlayingDTO"
+
+      now-playing:
+        description: "Get currently playing track info"
+        musickit_api: "AppleScript: tell application \"Music\" to get properties of current track"
+        requires_auth: false
+        arguments: []
+        options:
+          - name: "--watch"
+            short: "-w"
+            type: Bool
+            required: false
+            default: false
+            description: >
+              Continuously emit NDJSON (one JSON object per line) on state changes.
+              Polls Music.app every 1 second. Ctrl+C to stop.
+          - name: "--poll-interval"
+            short: null
+            type: Double
+            required: false
+            default: 1.0
+            description: "Poll interval in seconds (only with --watch)"
+        output_schema:
+          data_type: "NowPlayingDTO"
+          ref: "#/schemas/NowPlayingDTO"
+          note: "Returns null data if nothing is playing"
+
+      status:
+        description: "Get current player state (playing/paused/stopped, position, volume)"
+        musickit_api: "AppleScript: tell application \"Music\" to get {player state, player position, sound volume}"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            state: { type: string, enum: [playing, paused, stopped] }
+            position_seconds: { type: number, nullable: true }
+            volume: { type: number, description: "0-100" }
+            shuffle_enabled: { type: boolean }
+            repeat_mode: { type: string, enum: ["off", "one", "all"] }
+
+      seek:
+        description: "Seek to a specific position in the current track"
+        musickit_api: "AppleScript: tell application \"Music\" to set player position to"
+        requires_auth: false
+        arguments:
+          - name: position
+            type: Double
+            required: true
+            positional: true
+            description: "Position in seconds to seek to"
+        options: []
+        output_schema:
+          type: object
+          properties:
+            position_seconds: { type: number }
+
+      volume:
+        description: "Get or set playback volume"
+        musickit_api: "AppleScript: tell application \"Music\" to get/set sound volume"
+        requires_auth: false
+        arguments:
+          - name: level
+            type: Int
+            required: false
+            positional: true
+            description: "Volume level 0-100. Omit to get current volume."
+            range: [0, 100]
+        options: []
+        output_schema:
+          type: object
+          properties:
+            volume: { type: integer, description: "0-100" }
+
+      shuffle:
+        description: "Get or toggle shuffle mode"
+        musickit_api: "AppleScript: tell application \"Music\" to get/set shuffle enabled"
+        requires_auth: false
+        arguments:
+          - name: state
+            type: String
+            required: false
+            positional: true
+            description: "Set shuffle state. Omit to get current state."
+            enum: ["on", "off", "toggle"]
+        options: []
+        output_schema:
+          type: object
+          properties:
+            shuffle_enabled: { type: boolean }
+
+      repeat:
+        description: "Get or set repeat mode"
+        musickit_api: "AppleScript: tell application \"Music\" to get/set song repeat"
+        requires_auth: false
+        arguments:
+          - name: mode
+            type: String
+            required: false
+            positional: true
+            description: "Set repeat mode. Omit to get current mode."
+            enum: ["off", "one", "all"]
+        options: []
+        output_schema:
+          type: object
+          properties:
+            repeat_mode: { type: string, enum: ["off", "one", "all"] }
+
+      fast-forward:
+        description: "Fast forward the current track"
+        musickit_api: "AppleScript: tell application \"Music\" to fast forward"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            state: { type: string }
+
+      rewind:
+        description: "Rewind the current track"
+        musickit_api: "AppleScript: tell application \"Music\" to rewind"
+        requires_auth: false
+        arguments: []
+        options: []
+        output_schema:
+          type: object
+          properties:
+            state: { type: string }
+
+      airplay:
+        description: >
+          List and select AirPlay output devices. MusicKit has no AirPlay
+          API surface at all; this is AppleScript-only.
+        layer: applescript
+        availability: "macOS 10.15+"
+
+        subcommands:
+
+          list:
+            description: "List available AirPlay devices"
+            musickit_api: "AppleScript: get {name, active, kind} of every AirPlay device"
+            requires_auth: false
+            arguments: []
+            options: []
+            output_schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  active: { type: boolean }
+                  kind:
+                    type: string
+                    enum: [computer, AirPlay_device, Bluetooth_device, unknown]
+                  network_address: { type: string, nullable: true }
+
+          select:
+            description: "Activate or deactivate an AirPlay device by name"
+            musickit_api: "AppleScript: set selected of AirPlay device to true/false"
+            requires_auth: false
+            arguments:
+              - name: device-name
+                type: String
+                required: true
+                positional: true
+                description: "Name of the AirPlay device"
+            options:
+              - name: "--active"
+                short: null
+                type: Bool
+                required: false
+                default: true
+                description: "Set active (true) or deactivate (false)"
+            output_schema:
+              type: object
+              properties:
+                device_name: { type: string }
+                active: { type: boolean }
+
+          current:
+            description: "Get the currently active AirPlay device(s)"
+            musickit_api: "AppleScript: get name of (every AirPlay device whose selected is true)"
+            requires_auth: false
+            arguments: []
+            options: []
+            output_schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  kind: { type: string }
+
+      eq:
+        description: >
+          Manage EQ presets and per-track EQ assignments.
+          MusicKit has no EQ API surface; this is AppleScript-only.
+        layer: applescript
+        availability: "macOS 10.15+"
+
+        subcommands:
+
+          list-presets:
+            description: "List all available EQ presets"
+            musickit_api: "AppleScript: get name of every EQ preset"
+            requires_auth: false
+            arguments: []
+            options: []
+            output_schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+
+          get:
+            description: "Get the EQ preset assigned to a specific track"
+            musickit_api: "AppleScript: get EQ of track"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                database_id: { type: integer }
+                eq_preset: { type: string, nullable: true }
+
+          set:
+            description: "Set the EQ preset on a track"
+            musickit_api: "AppleScript: set EQ of track to"
+            requires_auth: false
+            arguments:
+              - name: track-id
+                type: Integer
+                required: true
+                positional: true
+                description: "Music.app database ID"
+              - name: preset-name
+                type: String
+                required: true
+                positional: true
+                description: "EQ preset name (from list-presets)"
+            options: []
+            output_schema:
+              type: object
+              properties:
+                database_id: { type: integer }
+                eq_preset: { type: string }
+
+  # ─── RECOMMENDATIONS ───────────────────────────────────────────────────────
+
+  recommendations:
+    description: "Fetch personalized recommendations based on listening history"
+    musickit_api: "MusicPersonalRecommendationsRequest"
+    layer: framework
+    availability: "macOS 13.0+"
+    requires_auth: true
+    arguments: []
+    options:
+      - name: "--limit"
+        short: "-l"
+        type: Int
+        required: false
+        default: 10
+        range: [1, 30]
+        description: "Maximum number of recommendation groups"
+    output_schema:
+      type: object
+      properties:
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string, nullable: true }
+              types:
+                type: array
+                items: { type: string, enum: [albums, playlists, stations] }
+              albums: { type: "AlbumDTO[]", nullable: true }
+              playlists: { type: "PlaylistDTO[]", nullable: true }
+              stations: { type: "StationDTO[]", nullable: true }
+
+  # ─── RECENTLY PLAYED ───────────────────────────────────────────────────────
+
+  recently-played:
+    description: "Fetch recently played items"
+    layer: framework
+    availability: "macOS 13.0+"
+    requires_auth: true
+
+    subcommands:
+
+      tracks:
+        description: "Fetch recently played tracks (songs/music videos)"
+        musickit_api: "MusicRecentlyPlayedRequest<Track>"
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 30]
+            description: "Maximum number of results"
+        output_schema:
+          data_type: "TrackDTO[]"
+          ref: "#/schemas/TrackDTO"
+          note: "Track is a union type containing either a Song or MusicVideo"
+
+      containers:
+        description: "Fetch recently played containers (albums, playlists, stations)"
+        musickit_api: "MusicRecentlyPlayedContainerRequest"
+        arguments: []
+        options:
+          - name: "--limit"
+            short: "-l"
+            type: Int
+            required: false
+            default: 10
+            range: [1, 30]
+            description: "Maximum number of results"
+        output_schema:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  type: { type: string, enum: [album, playlist, station] }
+                  id: { type: string }
+                  title: { type: string }
+                  artist_name: { type: string, nullable: true }
+                  artwork_url: { type: string, nullable: true }
+
+  # ─── RATINGS ───────────────────────────────────────────────────────────────
+
+  ratings:
+    description: "Get and set ratings on catalog or library items"
+    layer: rest
+    availability: "macOS 12.0+"
+
+    subcommands:
+
+      get:
+        description: "Get user's rating for an item"
+        musickit_api: "MusicDataRequest GET /v1/me/ratings/{type}/{id}"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Catalog or library item ID"
+        options:
+          - name: "--type"
+            short: "-t"
+            type: String
+            required: true
+            enum: [songs, albums, playlists, music-videos, stations]
+            description: "Resource type"
+          - name: "--library"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Use library item ID instead of catalog ID"
+        output_schema:
+          type: object
+          properties:
+            id: { type: string }
+            type: { type: string }
+            value: { type: integer, nullable: true, enum: [-1, 1], description: "-1 = dislike, 1 = love, null = no rating" }
+
+      set:
+        description: "Set user's rating for an item"
+        musickit_api: "MusicDataRequest PUT /v1/me/ratings/{type}/{id}"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Catalog item ID"
+          - name: value
+            type: Int
+            required: true
+            positional: true
+            description: "Rating value: 1 = love, -1 = dislike"
+            enum: [-1, 1]
+        options:
+          - name: "--type"
+            short: "-t"
+            type: String
+            required: true
+            enum: [songs, albums, playlists, music-videos, stations]
+            description: "Resource type"
+        output_schema:
+          type: object
+          properties:
+            id: { type: string }
+            type: { type: string }
+            value: { type: integer }
+
+      delete:
+        description: "Remove user's rating for an item"
+        musickit_api: "MusicDataRequest DELETE /v1/me/ratings/{type}/{id}"
+        requires_auth: true
+        arguments:
+          - name: id
+            type: String
+            required: true
+            positional: true
+            description: "Catalog item ID"
+        options:
+          - name: "--type"
+            short: "-t"
+            type: String
+            required: true
+            enum: [songs, albums, playlists, music-videos, stations]
+            description: "Resource type"
+        output_schema:
+          type: object
+          properties:
+            deleted: { type: boolean }
+            id: { type: string }
+
+  # ─── RAW API ───────────────────────────────────────────────────────────────
+
+  api:
+    description: >
+      Execute arbitrary Apple Music API requests via MusicDataRequest.
+      Escape hatch for any endpoint not covered by structured commands.
+      Tokens are attached automatically by the MusicKit framework.
+    musickit_api: "MusicDataRequest"
+    layer: rest
+    availability: "macOS 12.0+"
+    requires_auth: true
+
+    subcommands:
+
+      get:
+        description: "Execute a GET request to any Apple Music API endpoint"
+        arguments:
+          - name: path
+            type: String
+            required: true
+            positional: true
+            description: "API path (e.g. /v1/catalog/us/songs/203709340)"
+        options:
+          - name: "--query"
+            short: null
+            type: "String (key=value, repeatable)"
+            required: false
+            description: "Query parameters (can be specified multiple times)"
+        output_schema:
+          type: "raw JSON from Apple Music API"
+
+      post:
+        description: "Execute a POST request to any Apple Music API endpoint"
+        arguments:
+          - name: path
+            type: String
+            required: true
+            positional: true
+            description: "API path"
+        options:
+          - name: "--body"
+            short: "-b"
+            type: String
+            required: false
+            description: "JSON body string (or @filename to read from file)"
+          - name: "--stdin"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Read JSON body from stdin"
+        output_schema:
+          type: "raw JSON from Apple Music API"
+
+      put:
+        description: "Execute a PUT request to any Apple Music API endpoint"
+        arguments:
+          - name: path
+            type: String
+            required: true
+            positional: true
+            description: "API path"
+        options:
+          - name: "--body"
+            short: "-b"
+            type: String
+            required: false
+            description: "JSON body string (or @filename to read from file)"
+          - name: "--stdin"
+            short: null
+            type: Bool
+            required: false
+            default: false
+            description: "Read JSON body from stdin"
+        output_schema:
+          type: "raw JSON from Apple Music API"
+
+      delete:
+        description: "Execute a DELETE request to any Apple Music API endpoint"
+        arguments:
+          - name: path
+            type: String
+            required: true
+            positional: true
+            description: "API path"
+        options: []
+        output_schema:
+          type: "raw JSON from Apple Music API (may be empty)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OUTPUT SCHEMAS (DTOs)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# These are STABLE output contracts. Internal MusicKit Codable encoding may
+# vary between OS versions; these DTOs provide consistency for agent consumers.
+# All fields are derived from verified MusicKit type properties.
+
+schemas:
+
+  SongDTO:
+    description: "Stable representation of a MusicKit Song"
+    musickit_type: Song
+    properties:
+      id:               { type: string,  nullable: false, source: "song.id.rawValue" }
+      title:            { type: string,  nullable: false, source: "song.title" }
+      artist_name:      { type: string,  nullable: false, source: "song.artistName" }
+      album_title:      { type: string,  nullable: true,  source: "song.albumTitle" }
+      duration_seconds: { type: number,  nullable: true,  source: "song.duration" }
+      track_number:     { type: integer, nullable: true,  source: "song.trackNumber" }
+      disc_number:      { type: integer, nullable: true,  source: "song.discNumber" }
+      genre_names:      { type: "string[]", nullable: false, source: "song.genreNames" }
+      release_date:     { type: string,  nullable: true,  format: "ISO 8601 date", source: "song.releaseDate" }
+      isrc:             { type: string,  nullable: true,  source: "song.isrc" }
+      has_lyrics:       { type: boolean, nullable: true,  source: "song.hasLyrics" }
+      artwork_url:      { type: string,  nullable: true,  source: "song.artwork?.url(width:height:)" }
+      url:              { type: string,  nullable: true,  source: "song.url", description: "Apple Music web URL" }
+      preview_url:      { type: string,  nullable: true,  source: "song.previewAssets?.first?.url" }
+      content_rating:   { type: string,  nullable: true,  source: "song.contentRating", enum: [clean, explicit, null] }
+      play_count:       { type: integer, nullable: true,  source: "song.playCount", note: "Library songs only" }
+      last_played_date: { type: string,  nullable: true,  source: "song.lastPlayedDate", format: "ISO 8601" }
+      library_added_date: { type: string, nullable: true, source: "song.libraryAddedDate", format: "ISO 8601" }
+      audio_variants:
+        type: "string[]"
+        nullable: true
+        source: "song.audioVariants"
+        description: "e.g. dolbyAtmos, lossless, hiResLossless"
+        availability: "macOS 13.0+"
+      is_apple_digital_master:
+        type: boolean
+        nullable: true
+        source: "song.isAppleDigitalMaster"
+        availability: "macOS 13.0+"
+      play_parameters:
+        type: object
+        nullable: true
+        source: "song.playParameters"
+        properties:
+          id: { type: string }
+          kind: { type: string }
+
+  AlbumDTO:
+    description: "Stable representation of a MusicKit Album"
+    musickit_type: Album
+    properties:
+      id:               { type: string,  nullable: false, source: "album.id.rawValue" }
+      title:            { type: string,  nullable: false, source: "album.title" }
+      artist_name:      { type: string,  nullable: false, source: "album.artistName" }
+      track_count:      { type: integer, nullable: true,  source: "album.trackCount" }
+      genre_names:      { type: "string[]", nullable: false, source: "album.genreNames" }
+      release_date:     { type: string,  nullable: true,  format: "ISO 8601 date", source: "album.releaseDate" }
+      upc:              { type: string,  nullable: true,  source: "album.upc" }
+      is_compilation:   { type: boolean, nullable: true,  source: "album.isCompilation" }
+      is_complete:      { type: boolean, nullable: true,  source: "album.isComplete" }
+      is_single:        { type: boolean, nullable: true,  source: "album.isSingle" }
+      content_rating:   { type: string,  nullable: true,  source: "album.contentRating", enum: [clean, explicit, null] }
+      artwork_url:      { type: string,  nullable: true,  source: "album.artwork?.url(width:height:)" }
+      url:              { type: string,  nullable: true,  source: "album.url" }
+      editorial_notes:
+        type: object
+        nullable: true
+        source: "album.editorialNotes"
+        properties:
+          standard: { type: string, nullable: true }
+          short: { type: string, nullable: true }
+      record_label_name: { type: string, nullable: true, source: "album.recordLabelName" }
+      audio_variants:
+        type: "string[]"
+        nullable: true
+        availability: "macOS 13.0+"
+      is_apple_digital_master:
+        type: boolean
+        nullable: true
+        availability: "macOS 13.0+"
+      tracks:
+        type: "SongDTO[]"
+        nullable: true
+        description: "Only populated when --include tracks is used"
+
+  ArtistDTO:
+    description: "Stable representation of a MusicKit Artist"
+    musickit_type: Artist
+    properties:
+      id:          { type: string,  nullable: false, source: "artist.id.rawValue" }
+      name:        { type: string,  nullable: false, source: "artist.name" }
+      genre_names: { type: "string[]", nullable: true, source: "artist.genreNames" }
+      artwork_url: { type: string,  nullable: true,  source: "artist.artwork?.url(width:height:)" }
+      url:         { type: string,  nullable: true,  source: "artist.url" }
+      editorial_notes:
+        type: object
+        nullable: true
+        properties:
+          standard: { type: string, nullable: true }
+          short: { type: string, nullable: true }
+      top_songs:
+        type: "SongDTO[]"
+        nullable: true
+        description: "Only populated when --include top-songs is used"
+      albums:
+        type: "AlbumDTO[]"
+        nullable: true
+        description: "Only populated when --include albums is used"
+
+  PlaylistDTO:
+    description: "Stable representation of a MusicKit Playlist"
+    musickit_type: Playlist
+    properties:
+      id:               { type: string,  nullable: false, source: "playlist.id.rawValue" }
+      name:             { type: string,  nullable: false, source: "playlist.name" }
+      curator_name:     { type: string,  nullable: true,  source: "playlist.curatorName" }
+      description:      { type: string,  nullable: true,  source: "playlist.standardDescription" }
+      short_description: { type: string, nullable: true,  source: "playlist.shortDescription" }
+      kind:
+        type: string
+        nullable: true
+        source: "playlist.kind"
+        enum: [editorial, external, personalMix, replay, userShared, null]
+      last_modified_date: { type: string, nullable: true, source: "playlist.lastModifiedDate", format: "ISO 8601" }
+      artwork_url:      { type: string,  nullable: true,  source: "playlist.artwork?.url(width:height:)" }
+      url:              { type: string,  nullable: true,  source: "playlist.url" }
+      is_chart:         { type: boolean, nullable: true,  source: "playlist.isChart" }
+      has_collaboration: { type: boolean, nullable: true, source: "playlist.hasCollaboration" }
+      tracks:
+        type: "TrackDTO[]"
+        nullable: true
+        description: "Only populated when --include tracks or --include-tracks is used"
+
+  MusicVideoDTO:
+    description: "Stable representation of a MusicKit MusicVideo"
+    musickit_type: MusicVideo
+    properties:
+      id:               { type: string,  nullable: false, source: "musicVideo.id.rawValue" }
+      title:            { type: string,  nullable: false, source: "musicVideo.title" }
+      artist_name:      { type: string,  nullable: false, source: "musicVideo.artistName" }
+      album_title:      { type: string,  nullable: true,  source: "musicVideo.albumTitle" }
+      duration_seconds: { type: number,  nullable: true,  source: "musicVideo.duration" }
+      genre_names:      { type: "string[]", nullable: false, source: "musicVideo.genreNames" }
+      release_date:     { type: string,  nullable: true,  format: "ISO 8601 date" }
+      isrc:             { type: string,  nullable: true,  source: "musicVideo.isrc" }
+      has_lyrics:       { type: boolean, nullable: true,  source: "musicVideo.hasLyrics" }
+      artwork_url:      { type: string,  nullable: true }
+      url:              { type: string,  nullable: true }
+      content_rating:   { type: string,  nullable: true,  enum: [clean, explicit, null] }
+
+  StationDTO:
+    description: "Stable representation of a MusicKit Station"
+    musickit_type: Station
+    properties:
+      id:               { type: string,  nullable: false, source: "station.id.rawValue" }
+      name:             { type: string,  nullable: false, source: "station.name" }
+      artwork_url:      { type: string,  nullable: true }
+      url:              { type: string,  nullable: true }
+      is_live:          { type: boolean, nullable: true,  source: "station.isLive" }
+      editorial_notes:
+        type: object
+        nullable: true
+        properties:
+          standard: { type: string, nullable: true }
+          short: { type: string, nullable: true }
+
+  CuratorDTO:
+    description: "Stable representation of a MusicKit Curator"
+    musickit_type: Curator
+    availability: "macOS 13.0+"
+    properties:
+      id:          { type: string,  nullable: false }
+      name:        { type: string,  nullable: false, source: "curator.name" }
+      artwork_url: { type: string,  nullable: true }
+      url:         { type: string,  nullable: true }
+      editorial_notes:
+        type: object
+        nullable: true
+        properties:
+          standard: { type: string, nullable: true }
+          short: { type: string, nullable: true }
+
+  RadioShowDTO:
+    description: "Stable representation of a MusicKit RadioShow"
+    musickit_type: RadioShow
+    availability: "macOS 13.0+"
+    properties:
+      id:          { type: string,  nullable: false }
+      name:        { type: string,  nullable: false, source: "radioShow.name" }
+      artwork_url: { type: string,  nullable: true }
+      url:         { type: string,  nullable: true }
+
+  RecordLabelDTO:
+    description: "Stable representation of a MusicKit RecordLabel"
+    musickit_type: RecordLabel
+    availability: "macOS 13.0+"
+    properties:
+      id:          { type: string,  nullable: false }
+      name:        { type: string,  nullable: false, source: "recordLabel.name" }
+      artwork_url: { type: string,  nullable: true }
+      url:         { type: string,  nullable: true }
+      description: { type: string,  nullable: true }
+
+  GenreDTO:
+    description: "Stable representation of a MusicKit Genre"
+    musickit_type: Genre
+    properties:
+      id:     { type: string,  nullable: false }
+      name:   { type: string,  nullable: false, source: "genre.name" }
+      parent:
+        type: object
+        nullable: true
+        properties:
+          id:   { type: string }
+          name: { type: string }
+
+  TrackDTO:
+    description: >
+      Stable representation of a MusicKit Track.
+      Track is a union type wrapping either a Song or MusicVideo.
+    musickit_type: Track
+    properties:
+      type:  { type: string, nullable: false, enum: [song, musicVideo] }
+      song:  { type: "SongDTO",  nullable: true, description: "Present when type=song" }
+      music_video: { type: "MusicVideoDTO", nullable: true, description: "Present when type=musicVideo" }
+
+  NowPlayingDTO:
+    description: "Current playback state from Music.app AppleScript bridge"
+    source: applescript
+    properties:
+      title:            { type: string,  nullable: false }
+      artist_name:      { type: string,  nullable: false }
+      album_title:      { type: string,  nullable: false }
+      duration_seconds: { type: number,  nullable: true }
+      position_seconds: { type: number,  nullable: true }
+      state:            { type: string,  nullable: false, enum: [playing, paused, stopped] }
+      track_number:     { type: integer, nullable: true }
+      year:             { type: integer, nullable: true }
+      genre:            { type: string,  nullable: true }
+      database_id:      { type: integer, nullable: true, description: "Music.app internal database ID" }
+
+  ChartDTO:
+    description: "A chart result containing items of a specific type"
+    generic_parameter: T
+    properties:
+      title: { type: string, nullable: false, description: "Chart name e.g. 'Top Songs'" }
+      kind:  { type: string, nullable: false, enum: [mostPlayed, dailyGlobalTop, cityTop] }
+      items: { type: "T[]",  nullable: false, description: "Chart entries" }
+      has_next: { type: boolean, nullable: false }
+
+  TopResultDTO:
+    description: "A top result from cross-type catalog search"
+    availability: "macOS 13.0+"
+    properties:
+      type: { type: string, enum: [song, album, artist, playlist, musicVideo, station, curator, radioShow] }
+      id:   { type: string }
+      title: { type: string, description: "Display title (song title, album name, artist name, etc.)" }
+
+  StorefrontDTO:
+    description: "Apple Music storefront metadata"
+    properties:
+      id:               { type: string,  nullable: false, description: "e.g. 'us', 'gb', 'jp'" }
+      name:             { type: string,  nullable: false }
+      default_language: { type: string,  nullable: false }
+      supported_languages: { type: "string[]", nullable: true }
+
+  TrackTagsDTO:
+    description: >
+      Complete metadata tag set for a library track via AppleScript.
+      All writable properties from the Music.app scripting dictionary.
+      Read via 'get properties of track'; write via 'set <prop> of track to'.
+    source: applescript
+    properties:
+      # ── Identity ──
+      database_id:    { type: integer, nullable: false, writable: false, source: "id of track" }
+      persistent_id:  { type: string,  nullable: true,  writable: false, source: "persistent ID of track" }
+      # ── Core tags ──
+      name:           { type: string,  nullable: false, writable: true,  source: "name of track" }
+      artist:         { type: string,  nullable: true,  writable: true,  source: "artist of track" }
+      album_artist:   { type: string,  nullable: true,  writable: true,  source: "album artist of track" }
+      album:          { type: string,  nullable: true,  writable: true,  source: "album of track" }
+      genre:          { type: string,  nullable: true,  writable: true,  source: "genre of track" }
+      year:           { type: integer, nullable: true,  writable: true,  source: "year of track" }
+      composer:       { type: string,  nullable: true,  writable: true,  source: "composer of track" }
+      comments:       { type: string,  nullable: true,  writable: true,  source: "comment of track" }
+      grouping:       { type: string,  nullable: true,  writable: true,  source: "grouping of track" }
+      # ── Disc/Track numbering ──
+      track_number:   { type: integer, nullable: true,  writable: true,  source: "track number of track" }
+      track_count:    { type: integer, nullable: true,  writable: true,  source: "track count of track" }
+      disc_number:    { type: integer, nullable: true,  writable: true,  source: "disc number of track" }
+      disc_count:     { type: integer, nullable: true,  writable: true,  source: "disc count of track" }
+      # ── Flags and ratings ──
+      compilation:    { type: boolean, nullable: true,  writable: true,  source: "compilation of track" }
+      enabled:        { type: boolean, nullable: true,  writable: true,  source: "enabled of track" }
+      rating:         { type: integer, nullable: true,  writable: true,  source: "rating of track", description: "0-100 scale; 0=unrated, 20/40/60/80/100 = 1-5 stars" }
+      loved:          { type: boolean, nullable: true,  writable: true,  source: "loved of track" }
+      disliked:       { type: boolean, nullable: true,  writable: true,  source: "disliked of track" }
+      # ── Audio properties ──
+      bpm:            { type: integer, nullable: true,  writable: true,  source: "bpm of track" }
+      volume_adjustment: { type: integer, nullable: true, writable: true, source: "volume adjustment of track", description: "-100 to +100" }
+      eq:             { type: string,  nullable: true,  writable: true,  source: "EQ of track", description: "EQ preset name" }
+      start:          { type: number,  nullable: true,  writable: true,  source: "start of track", description: "Start time in seconds (for trimming)" }
+      finish:         { type: number,  nullable: true,  writable: true,  source: "finish of track", description: "End time in seconds (for trimming)" }
+      # ── Sort overrides ──
+      sort_name:         { type: string, nullable: true, writable: true, source: "sort name of track" }
+      sort_artist:       { type: string, nullable: true, writable: true, source: "sort artist of track" }
+      sort_album_artist: { type: string, nullable: true, writable: true, source: "sort album artist of track" }
+      sort_album:        { type: string, nullable: true, writable: true, source: "sort album of track" }
+      sort_composer:     { type: string, nullable: true, writable: true, source: "sort composer of track" }
+      # ── Lyrics ──
+      lyrics:         { type: string,  nullable: true,  writable: true,  source: "lyrics of track" }
+      # ── Read-only metadata ──
+      duration:       { type: number,  nullable: true,  writable: false, source: "duration of track", description: "Duration in seconds" }
+      time:           { type: string,  nullable: true,  writable: false, source: "time of track", description: "Duration as MM:SS string" }
+      date_added:     { type: string,  nullable: true,  writable: false, source: "date added of track", format: "ISO 8601" }
+      kind:           { type: string,  nullable: true,  writable: false, source: "kind of track", description: "e.g. 'MPEG audio file', 'AAC audio file', 'Apple Lossless audio file'" }
+      artwork_count:  { type: integer, nullable: true,  writable: false, source: "count of artworks of track" }
+      # ── Play statistics (see PlayStatsDTO for write access) ──
+      played_count:   { type: integer, nullable: true,  writable: true,  source: "played count of track" }
+      played_date:    { type: string,  nullable: true,  writable: true,  source: "played date of track", format: "ISO 8601" }
+      skipped_count:  { type: integer, nullable: true,  writable: true,  source: "skipped count of track" }
+      skipped_date:   { type: string,  nullable: true,  writable: true,  source: "skipped date of track", format: "ISO 8601" }
+
+  FileInfoDTO:
+    description: >
+      File-level metadata for a library track via AppleScript.
+      Exposes properties unavailable through MusicKit: filesystem path,
+      bit rate, sample rate, file size, codec, and media kind.
+    source: applescript
+    properties:
+      database_id:    { type: integer, nullable: false, source: "id of track" }
+      location:       { type: string,  nullable: true,  source: "POSIX path of (location of track)", description: "Absolute file path; null for streaming-only tracks" }
+      bit_rate:       { type: integer, nullable: true,  source: "bit rate of track", description: "In kbps" }
+      sample_rate:    { type: integer, nullable: true,  source: "sample rate of track", description: "In Hz, e.g. 44100, 48000, 96000" }
+      size:           { type: integer, nullable: true,  source: "size of track", description: "File size in bytes" }
+      kind:           { type: string,  nullable: true,  source: "kind of track", description: "e.g. 'MPEG audio file', 'AAC audio file', 'Apple Lossless audio file'" }
+      duration:       { type: number,  nullable: true,  source: "duration of track", description: "Duration in seconds" }
+      date_added:     { type: string,  nullable: true,  source: "date added of track", format: "ISO 8601" }
+      date_modified:  { type: string,  nullable: true,  source: "modification date of track", format: "ISO 8601" }
+      cloud_status:
+        type: string
+        nullable: true
+        source: "cloud status of track"
+        description: "Status relative to iCloud Music Library"
+        enum: [unknown, purchased, matched, uploaded, ineligible, removed, error, duplicate, subscription, no_longer_available, not_uploaded, null]
+
+  PlayStatsDTO:
+    description: >
+      Play and skip statistics for a library track via AppleScript.
+      MusicKit exposes playCount and lastPlayedDate as read-only.
+      AppleScript allows both reading and writing these values.
+    source: applescript
+    properties:
+      database_id:    { type: integer, nullable: false, source: "id of track" }
+      name:           { type: string,  nullable: false, source: "name of track", description: "Included for identification" }
+      artist:         { type: string,  nullable: true,  source: "artist of track", description: "Included for identification" }
+      played_count:   { type: integer, nullable: true,  writable: true,  source: "played count of track" }
+      played_date:    { type: string,  nullable: true,  writable: true,  source: "played date of track", format: "ISO 8601" }
+      skipped_count:  { type: integer, nullable: true,  writable: true,  source: "skipped count of track" }
+      skipped_date:   { type: string,  nullable: true,  writable: true,  source: "skipped date of track", format: "ISO 8601" }
+      rating:         { type: integer, nullable: true,  writable: true,  source: "rating of track", description: "0-100 scale" }
+      loved:          { type: boolean, nullable: true,  writable: true,  source: "loved of track" }
+      disliked:       { type: boolean, nullable: true,  writable: true,  source: "disliked of track" }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# API COVERAGE MATRIX
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Exhaustive mapping of all Apple Music interfaces — MusicKit framework,
+# REST API, and Music.app AppleScript dictionary — to Aux CLI commands.
+
+api_coverage:
+
+  structured_requests:
+    - api: MusicCatalogSearchRequest
+      availability: "macOS 12.0+"
+      mk_command: "aux search {songs|albums|artists|playlists|music-videos|stations|curators|radio-shows|all}"
+      layer: framework
+      status: mapped
+
+    - api: MusicCatalogResourceRequest
+      availability: "macOS 12.0+"
+      mk_command: "aux catalog {song|album|artist|playlist|music-video|station|curator|radio-show|record-label|genre}"
+      layer: framework
+      status: mapped
+      note: "Also supports matching by .isrc (songs) and .upc (albums)"
+
+    - api: MusicCatalogChartsRequest
+      availability: "macOS 13.0+"
+      mk_command: "aux catalog charts"
+      layer: framework
+      status: mapped
+
+    - api: MusicCatalogSearchSuggestionsRequest
+      availability: "macOS 13.0+"
+      mk_command: "aux search suggestions"
+      layer: framework
+      status: mapped
+
+    - api: MusicLibraryRequest
+      availability: "macOS 14.0+ (stable 14.2+)"
+      mk_command: "aux library {songs|albums|artists|playlists|music-videos}"
+      layer: framework
+      status: mapped
+      note: "NOT available on macOS 13 or earlier"
+
+    - api: MusicLibrarySearchRequest
+      availability: "macOS 14.0+ (stable 14.2+)"
+      mk_command: "aux library search"
+      layer: framework
+      status: mapped
+
+    - api: MusicPersonalRecommendationsRequest
+      availability: "macOS 13.0+"
+      mk_command: "aux recommendations"
+      layer: framework
+      status: mapped
+
+    - api: MusicRecentlyPlayedRequest
+      availability: "macOS 13.0+"
+      mk_command: "aux recently-played tracks"
+      layer: framework
+      status: mapped
+      note: "Generic over Song, MusicVideo, Track"
+
+    - api: MusicRecentlyPlayedContainerRequest
+      availability: "macOS 13.0+"
+      mk_command: "aux recently-played containers"
+      layer: framework
+      status: mapped
+      note: "Returns albums, playlists, stations"
+
+    - api: MusicDataRequest
+      availability: "macOS 12.0+"
+      mk_command: "aux api {get|post|put|delete}"
+      layer: rest
+      status: mapped
+      note: "Escape hatch for arbitrary Apple Music API endpoints"
+
+  authorization_and_subscription:
+    - api: MusicAuthorization.request()
+      availability: "macOS 12.0+"
+      mk_command: "aux auth request"
+      layer: framework
+      status: mapped
+
+    - api: MusicAuthorization.currentStatus
+      availability: "macOS 12.0+"
+      mk_command: "aux auth status"
+      layer: framework
+      status: mapped
+
+    - api: MusicSubscription.current
+      availability: "macOS 12.0+"
+      mk_command: "aux auth status"
+      layer: framework
+      status: mapped
+      note: "Merged into auth status output"
+
+    - api: MusicTokenProvider.shared
+      availability: "macOS 13.0+"
+      mk_command: "aux auth token"
+      layer: framework
+      status: mapped
+
+  playback:
+    - api: ApplicationMusicPlayer
+      availability: "@available(macOS, unavailable)"
+      mk_command: "N/A"
+      layer: null
+      status: unavailable_on_macos
+      note: "Apple engineer confirmed significant engineering challenges prevent this"
+
+    - api: SystemMusicPlayer
+      availability: "@available(macOS, unavailable)"
+      mk_command: "N/A"
+      layer: null
+      status: unavailable_on_macos
+
+    - api: "AppleScript bridge to Music.app"
+      availability: "macOS 10.15+"
+      mk_command: "aux playback {play|pause|stop|next|previous|now-playing|status|seek|volume|shuffle|repeat|fast-forward|rewind}"
+      layer: applescript
+      status: mapped
+      note: "Production-proven approach used by Yatoro, mcp-applemusic, Apple-Music-CLI-Player"
+
+    - api: "AppleScript AirPlay device control"
+      availability: "macOS 10.15+"
+      mk_command: "aux playback airplay {list|select|current}"
+      layer: applescript
+      status: mapped
+      note: "MusicKit has no AirPlay API surface; AppleScript-exclusive"
+
+    - api: "AppleScript EQ preset management"
+      availability: "macOS 10.15+"
+      mk_command: "aux playback eq {list-presets|get|set}"
+      layer: applescript
+      status: mapped
+      note: "MusicKit has no EQ API surface; AppleScript-exclusive"
+
+  library_mutations:
+    - api: MusicLibrary.shared.add()
+      availability: "@available(macOS, unavailable)"
+      mk_command: "aux library add"
+      layer: rest
+      status: mapped_via_rest
+      rest_endpoint: "POST /v1/me/library"
+
+    - api: MusicLibrary.shared.createPlaylist()
+      availability: "@available(macOS, unavailable)"
+      mk_command: "aux library create-playlist"
+      layer: rest
+      status: mapped_via_rest
+      rest_endpoint: "POST /v1/me/library/playlists"
+
+    - api: "Add tracks to playlist"
+      availability: "REST API"
+      mk_command: "aux library add-to-playlist"
+      layer: rest
+      status: mapped_via_rest
+      rest_endpoint: "POST /v1/me/library/playlists/{id}/tracks"
+
+  ratings:
+    - api: "User ratings (REST API)"
+      availability: "macOS 12.0+ (via MusicDataRequest)"
+      mk_command: "aux ratings {get|set|delete}"
+      layer: rest
+      status: mapped
+      rest_endpoints:
+        - "GET /v1/me/ratings/{type}/{id}"
+        - "PUT /v1/me/ratings/{type}/{id}"
+        - "DELETE /v1/me/ratings/{type}/{id}"
+
+  not_mapped:
+    - api: MusicSubscriptionOffer
+      reason: "SwiftUI-specific view for presenting subscription offers; no CLI equivalent"
+      workaround: "aux auth status reports subscription state"
+
+    - api: ArtworkImage
+      reason: "SwiftUI view; CLI outputs artwork_url instead and aux library artwork get exports raw data"
+
+    - api: MusicPlayer.Transition.crossfade
+      availability: "@available(macOS, unavailable)"
+      reason: "iOS 18+ only, not available on macOS"
+
+    - api: MusicSubscription.OfferOptions
+      reason: "iOS-only offer presentation API"
+
+  # ── AppleScript-exclusive capabilities ──────────────────────────────────────
+  # These have NO equivalent in MusicKit framework or Apple Music REST API.
+  # The Music.app AppleScript dictionary is the ONLY interface for these.
+
+  applescript_exclusive:
+
+    metadata_writing:
+      description: >
+        MusicKit is entirely read-only for track metadata on all platforms.
+        The Apple Music REST API has no metadata write endpoints.
+        AppleScript is the only interface that can SET properties on library tracks.
+      mk_commands:
+        - "aux library tag set"
+        - "aux library tag batch-set"
+      writable_properties:
+        - name
+        - artist
+        - album_artist
+        - album
+        - genre
+        - year
+        - composer
+        - comments
+        - grouping
+        - track_number
+        - track_count
+        - disc_number
+        - disc_count
+        - bpm
+        - compilation
+        - enabled
+        - rating
+        - loved
+        - disliked
+        - volume_adjustment
+        - eq
+        - start
+        - finish
+        - sort_name
+        - sort_artist
+        - sort_album_artist
+        - sort_album
+        - sort_composer
+
+    lyrics_write:
+      description: "MusicKit can detect hasLyrics but cannot read or write lyrics text"
+      mk_commands:
+        - "aux library lyrics get"
+        - "aux library lyrics set"
+
+    artwork_binary_access:
+      description: >
+        MusicKit provides CDN URLs for artwork (Artwork.url(width:height:)).
+        AppleScript provides raw binary data access (read/write) to artwork
+        embedded in track files. Multiple artworks per track are supported.
+      mk_commands:
+        - "aux library artwork get"
+        - "aux library artwork set"
+        - "aux library artwork count"
+
+    local_file_import:
+      description: >
+        No MusicKit API can import local audio files. The AppleScript 'add'
+        command imports files into the library. The 'open' command imports
+        and immediately starts playback.
+      mk_command: "aux library import"
+
+    audio_conversion:
+      description: >
+        The AppleScript 'convert' command transcodes tracks using the
+        encoder configured in Music.app preferences (AAC, AIFF, ALAC, MP3, WAV).
+        No MusicKit equivalent exists.
+      mk_command: "aux library convert"
+
+    track_deletion:
+      description: >
+        Neither MusicKit framework nor the REST API expose a delete operation
+        for library items. AppleScript's 'delete' command is the only way.
+      mk_command: "aux library delete"
+
+    file_path_access:
+      description: >
+        The 'location' property on an AppleScript track returns the POSIX
+        file path to the audio file. MusicKit does not expose file paths.
+        The 'reveal' command opens the file in Finder.
+      mk_commands:
+        - "aux library file-info"
+        - "aux library reveal"
+
+    file_level_metadata:
+      description: >
+        Bit rate, sample rate, file size, codec/kind, and modification date
+        are available via AppleScript but not via MusicKit.
+      mk_command: "aux library file-info"
+
+    play_statistics_write:
+      description: >
+        MusicKit exposes playCount and lastPlayedDate as READ-ONLY.
+        AppleScript can both read and WRITE played count, played date,
+        skipped count, and skipped date.
+      mk_commands:
+        - "aux library stats get"
+        - "aux library stats set"
+        - "aux library stats reset"
+
+    advanced_playlist_manipulation:
+      description: >
+        The REST API can create playlists and append tracks.
+        AppleScript can additionally: delete playlists, rename playlists,
+        remove specific tracks, reorder tracks within a playlist,
+        and copy tracks between playlists.
+      mk_commands:
+        - "aux library playlist-manage delete-playlist"
+        - "aux library playlist-manage rename-playlist"
+        - "aux library playlist-manage remove-tracks"
+        - "aux library playlist-manage reorder"
+        - "aux library playlist-manage duplicate-tracks"
+        - "aux library playlist-manage list-all"
+
+    airplay_control:
+      description: >
+        MusicKit has no AirPlay API surface whatsoever.
+        AppleScript can list available AirPlay devices, get their
+        active/selected state, and toggle device selection.
+      mk_commands:
+        - "aux playback airplay list"
+        - "aux playback airplay select"
+        - "aux playback airplay current"
+
+    eq_management:
+      description: >
+        MusicKit has no EQ API surface. AppleScript can list available
+        EQ presets, get the per-track EQ assignment, and set it.
+      mk_commands:
+        - "aux playback eq list-presets"
+        - "aux playback eq get"
+        - "aux playback eq set"
+
+    library_search_with_predicates:
+      description: >
+        AppleScript's 'whose' clause enables compound predicate filtering
+        across any track property, including file-level metadata.
+        Example: every track whose artist contains "Autechre" and year > 2010
+        and bit rate > 256. MusicLibraryRequest supports filtering but only
+        on a subset of properties and cannot filter by bit rate, file size,
+        sample rate, etc.
+      mk_command: "aux library tag get (with compound filters via AppleScript whose clause)"
+      note: >
+        This is used internally by aux library commands when filters involve
+        properties not exposed by MusicLibraryRequest.
