@@ -50,11 +50,15 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
 
     public func nextTrack() async throws -> NowPlayingDTO {
         try executeScript("tell application \"Music\" to next track")
+        // Brief pause for Music.app to complete the track transition
+        // before querying current track, otherwise we get stale data.
+        try await Task.sleep(nanoseconds: 300_000_000)
         return try await getNowPlaying()
     }
 
     public func previousTrack() async throws -> NowPlayingDTO {
         try executeScript("tell application \"Music\" to previous track")
+        try await Task.sleep(nanoseconds: 300_000_000)
         return try await getNowPlaying()
     }
 
@@ -761,17 +765,23 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     // MARK: - Queue
 
     public func playNext(trackId: Int) async throws {
-        // GUI scripting: reveal track, then click Song > Play Next.
-        // Same pattern as getEQ/setEQ — requires Accessibility permissions.
-        // delay 1.0 needed for Music.app to fully select the revealed track.
+        // GUI scripting: reveal track, select row, then click Song > Play Next.
+        // `reveal` navigates to the track but does NOT select the table row.
+        // Arrow key down+up forces a proper row selection so the Song menu
+        // acts on the correct track.
         let script = """
         tell application "Music"
+            activate
             set theTrack to (first track of first library playlist whose database ID is \(trackId))
             reveal theTrack
         end tell
         delay 1.0
         tell application "System Events"
             tell process "Music"
+                key code 125
+                delay 0.2
+                key code 126
+                delay 0.5
                 click menu item "Play Next" of menu 1 of menu bar item "Song" of menu bar 1
             end tell
         end tell
@@ -780,18 +790,33 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     }
 
     public func addToQueue(trackId: Int) async throws {
-        // GUI scripting: reveal track, then click Song > Add to Queue.
-        // Same pattern as getEQ/setEQ — requires Accessibility permissions.
-        // delay 1.0 needed for Music.app to fully select the revealed track.
+        // GUI scripting: reveal track, select row, then click Song > Add to Queue.
+        // `reveal` navigates to the track but does NOT select the table row.
+        // Arrow key down+up forces a proper row selection so the Song menu
+        // acts on the correct track.
+        //
+        // "Add to Queue" is only enabled after at least one "Play Next" has
+        // created an active queue. If disabled, fall back to "Play Next" which
+        // appends when no queue exists yet (same end result).
         let script = """
         tell application "Music"
+            activate
             set theTrack to (first track of first library playlist whose database ID is \(trackId))
             reveal theTrack
         end tell
         delay 1.0
         tell application "System Events"
             tell process "Music"
-                click menu item "Add to Queue" of menu 1 of menu bar item "Song" of menu bar 1
+                key code 125
+                delay 0.2
+                key code 126
+                delay 0.5
+                set addItem to menu item "Add to Queue" of menu 1 of menu bar item "Song" of menu bar 1
+                if enabled of addItem then
+                    click addItem
+                else
+                    click menu item "Play Next" of menu 1 of menu bar item "Song" of menu bar 1
+                end if
             end tell
         end tell
         """
