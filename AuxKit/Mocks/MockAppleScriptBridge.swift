@@ -51,6 +51,8 @@ public final class MockAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     public var listEQPresetsCalled = false
     public var getEQCalled = false
     public var setEQCalled = false
+    public var playNextCalled = false
+    public var addToQueueCalled = false
 
     // MARK: - Configurable Results
 
@@ -93,6 +95,8 @@ public final class MockAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     public var listEQPresetsResult: Result<[String], Error> = .success([])
     public var getEQResult: Result<String?, Error> = .success(nil)
     public var setEQResult: Result<Void, Error> = .success(())
+    public var playNextResult: Result<Void, Error> = .success(())
+    public var addToQueueResult: Result<Void, Error> = .success(())
 
     public init() {}
 
@@ -138,6 +142,8 @@ public final class MockAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
         listEQPresetsCalled = false
         getEQCalled = false
         setEQCalled = false
+        playNextCalled = false
+        addToQueueCalled = false
     }
 
     // MARK: - Playback
@@ -353,5 +359,17 @@ public final class MockAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     public func setEQ(preset: String) async throws {
         setEQCalled = true
         try setEQResult.get()
+    }
+
+    // MARK: - Queue
+
+    public func playNext(trackId: Int) async throws {
+        playNextCalled = true
+        try playNextResult.get()
+    }
+
+    public func addToQueue(trackId: Int) async throws {
+        addToQueueCalled = true
+        try addToQueueResult.get()
     }
 }

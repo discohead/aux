@@ -23,6 +23,8 @@ public protocol AppleScriptBridgeProtocol: Sendable {
     func setVolume(_ volume: Double) async throws
     func setShuffle(_ enabled: Bool) async throws
     func setRepeat(_ mode: String) async throws
+    func playNext(trackId: Int) async throws
+    func addToQueue(trackId: Int) async throws
 
     // MARK: - Tags
 

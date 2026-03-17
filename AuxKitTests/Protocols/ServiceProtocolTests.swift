@@ -134,6 +134,8 @@ struct AppleScriptBridgeProtocolTests {
             func setVolume(_ volume: Double) async throws {}
             func setShuffle(_ enabled: Bool) async throws {}
             func setRepeat(_ mode: String) async throws {}
+            func playNext(trackId: Int) async throws {}
+            func addToQueue(trackId: Int) async throws {}
 
             // Tags
             func getTrackTags(trackId: Int) async throws -> TrackTagsDTO { TrackTagsDTO.fixture() }
