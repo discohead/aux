@@ -12,11 +12,15 @@ public struct LibraryFindDuplicatesCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await LibraryFindDuplicatesHandler.handle(
-            services: services, options: options,
-            playlistName: playlistName
-        )
+        do {
+            let services = ServiceContainer.live()
+            try await LibraryFindDuplicatesHandler.handle(
+                services: services, options: options,
+                playlistName: playlistName
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

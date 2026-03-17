@@ -24,8 +24,12 @@ public struct RepeatCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await RepeatHandler.handle(services: services, options: options, mode: mode)
+        do {
+            let services = ServiceContainer.live()
+            try await RepeatHandler.handle(services: services, options: options, mode: mode)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

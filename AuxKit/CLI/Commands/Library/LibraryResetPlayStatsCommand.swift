@@ -12,11 +12,15 @@ public struct LibraryResetPlayStatsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let ids = trackIds.split(separator: ",").compactMap { Int($0) }
-        try await LibraryResetPlayStatsHandler.handle(
-            services: services, options: options, trackIds: ids
-        )
+        do {
+            let services = ServiceContainer.live()
+            let ids = trackIds.split(separator: ",").compactMap { Int($0) }
+            try await LibraryResetPlayStatsHandler.handle(
+                services: services, options: options, trackIds: ids
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

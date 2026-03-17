@@ -24,8 +24,12 @@ public struct SeekCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await SeekHandler.handle(services: services, options: options, position: position)
+        do {
+            let services = ServiceContainer.live()
+            try await SeekHandler.handle(services: services, options: options, position: position)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

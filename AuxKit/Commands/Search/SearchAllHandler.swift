@@ -18,6 +18,9 @@ public struct SearchAllHandler {
         offset: Int = 0,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
+        guard limit >= 1, limit <= 25 else {
+            throw AuxError.usageError(message: "Limit must be between 1 and 25 (got \(limit))")
+        }
         let results = try await services.catalog.searchAll(query: query, types: types, limit: limit, offset: offset)
         let outputWriter = writer ?? options.makeOutputWriter()
         try outputWriter.write(OutputEnvelope(data: results, meta: PaginationMeta(limit: limit, offset: offset, total: nil, hasNext: nil)))

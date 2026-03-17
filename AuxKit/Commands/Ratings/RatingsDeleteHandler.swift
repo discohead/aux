@@ -9,6 +9,10 @@ import Foundation
 
 /// Handler for the `ratings delete` command — removes a rating for an item.
 public struct RatingsDeleteHandler {
+
+    /// Valid Apple Music API resource types for ratings.
+    static let validTypes = ["songs", "albums", "playlists", "music-videos", "stations"]
+
     public static func handle(
         services: ServiceContainer,
         options: GlobalOptions,
@@ -16,6 +20,12 @@ public struct RatingsDeleteHandler {
         id: String,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
+        guard validTypes.contains(type) else {
+            throw AuxError.usageError(
+                message: "Invalid type '\(type)'. Valid types: \(validTypes.joined(separator: ", "))"
+            )
+        }
+
         let path = "/v1/me/ratings/\(type)/\(id)"
         let _ = try await services.restAPI.delete(path: path)
         let result = RatingResult(updated: true, id: id)

@@ -30,8 +30,12 @@ public struct RatingsSetCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await RatingsSetHandler.handle(services: services, options: options, type: type, id: id, rating: rating)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await RatingsSetHandler.handle(services: services, options: options, type: type, id: id, rating: rating)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

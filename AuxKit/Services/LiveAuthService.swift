@@ -31,7 +31,11 @@ public final class LiveAuthService: AuthService, Sendable {
         }
         // MusicKit manages tokens internally via MusicDataRequest.
         // Developer token is embedded in the app bundle; user token is not directly accessible.
-        return TokenResult(developerToken: nil, userToken: nil)
+        return TokenResult(
+            developerToken: nil,
+            userToken: nil,
+            message: "MusicKit manages tokens internally. Use MusicDataRequest or the 'api' commands to make authenticated requests."
+        )
     }
 
     // MARK: - Private

@@ -13,23 +13,16 @@ public struct LibrarySetTagsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let fieldDict = parseFields(fields)
-        try await LibrarySetTagsHandler.handle(
-            services: services, options: options,
-            trackId: trackId, fields: fieldDict
-        )
-    }
-
-    private func parseFields(_ raw: String) -> [String: String] {
-        var result: [String: String] = [:]
-        for pair in raw.split(separator: ",") {
-            let parts = pair.split(separator: "=", maxSplits: 1)
-            if parts.count == 2 {
-                result[String(parts[0])] = String(parts[1])
-            }
+        do {
+            let services = ServiceContainer.live()
+            let fieldDict = try FieldParser.parse(fields)
+            try await LibrarySetTagsHandler.handle(
+                services: services, options: options,
+                trackId: trackId, fields: fieldDict
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
         }
-        return result
     }
     public init() {}
 }

@@ -13,12 +13,16 @@ public struct LibraryImportCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let pathArray = paths.split(separator: ",").map(String.init)
-        try await LibraryImportHandler.handle(
-            services: services, options: options,
-            paths: pathArray, toPlaylist: toPlaylist
-        )
+        do {
+            let services = ServiceContainer.live()
+            let pathArray = paths.split(separator: ",").map(String.init)
+            try await LibraryImportHandler.handle(
+                services: services, options: options,
+                paths: pathArray, toPlaylist: toPlaylist
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

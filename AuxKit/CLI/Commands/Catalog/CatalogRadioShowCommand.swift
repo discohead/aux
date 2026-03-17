@@ -24,8 +24,12 @@ public struct CatalogRadioShowCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await CatalogRadioShowHandler.handle(services: services, options: options, id: id)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await CatalogRadioShowHandler.handle(services: services, options: options, id: id)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

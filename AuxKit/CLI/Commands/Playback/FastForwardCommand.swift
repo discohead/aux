@@ -24,8 +24,12 @@ public struct FastForwardCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await FastForwardHandler.handle(services: services, options: options, seconds: seconds)
+        do {
+            let services = ServiceContainer.live()
+            try await FastForwardHandler.handle(services: services, options: options, seconds: seconds)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

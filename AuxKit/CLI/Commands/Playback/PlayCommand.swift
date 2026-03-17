@@ -24,8 +24,12 @@ public struct PlayCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await PlayHandler.handle(services: services, options: options, trackId: trackId)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await PlayHandler.handle(services: services, options: options, trackId: trackId)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

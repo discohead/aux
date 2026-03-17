@@ -24,8 +24,12 @@ public struct CatalogSongByISRCCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await CatalogSongByISRCHandler.handle(services: services, options: options, isrc: isrc)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await CatalogSongByISRCHandler.handle(services: services, options: options, isrc: isrc)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

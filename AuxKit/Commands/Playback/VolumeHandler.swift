@@ -15,8 +15,11 @@ public struct VolumeHandler {
         volume: Double,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
+        guard volume >= 0, volume <= 100 else {
+            throw AuxError.usageError(message: "Volume must be between 0 and 100 (got \(Int(volume)))")
+        }
         try await services.appleScript.setVolume(volume)
         let outputWriter = writer ?? options.makeOutputWriter()
-        try outputWriter.write(OutputEnvelope(data: SuccessResult(message: "Volume set to \(volume)")))
+        try outputWriter.write(OutputEnvelope(data: SuccessResult(message: "Volume set to \(Int(volume))")))
     }
 }

@@ -27,8 +27,12 @@ public struct APIPostCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await APIPostHandler.handle(services: services, options: options, path: path, body: body)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await APIPostHandler.handle(services: services, options: options, path: path, body: body)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

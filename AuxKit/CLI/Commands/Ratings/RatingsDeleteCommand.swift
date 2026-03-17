@@ -27,8 +27,12 @@ public struct RatingsDeleteCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await RatingsDeleteHandler.handle(services: services, options: options, type: type, id: id)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await RatingsDeleteHandler.handle(services: services, options: options, type: type, id: id)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

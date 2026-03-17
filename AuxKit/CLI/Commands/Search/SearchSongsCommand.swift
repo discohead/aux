@@ -14,8 +14,12 @@ public struct SearchSongsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await SearchSongsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset)
+        do {
+            let services = ServiceContainer.live()
+            try await SearchSongsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

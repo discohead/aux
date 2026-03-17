@@ -18,13 +18,17 @@ public struct LibrarySongsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await LibrarySongsHandler.handle(
-            services: services, options: options,
-            limit: limit, offset: offset, sort: sort,
-            title: title, artist: artist, album: album,
-            downloadedOnly: downloadedOnly
-        )
+        do {
+            let services = ServiceContainer.live()
+            try await LibrarySongsHandler.handle(
+                services: services, options: options,
+                limit: limit, offset: offset, sort: sort,
+                title: title, artist: artist, album: album,
+                downloadedOnly: downloadedOnly
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

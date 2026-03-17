@@ -33,15 +33,19 @@ public struct CatalogChartsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await CatalogChartsHandler.handle(
-            services: services,
-            options: options,
-            kinds: kinds,
-            types: types,
-            genreId: genreId,
-            limit: limit
-        )
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await CatalogChartsHandler.handle(
+                services: services,
+                options: options,
+                kinds: kinds,
+                types: types,
+                genreId: genreId,
+                limit: limit
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

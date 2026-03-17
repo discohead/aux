@@ -24,8 +24,12 @@ public struct VolumeCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await VolumeHandler.handle(services: services, options: options, volume: level)
+        do {
+            let services = ServiceContainer.live()
+            try await VolumeHandler.handle(services: services, options: options, volume: level)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

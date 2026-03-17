@@ -17,6 +17,9 @@ public struct SearchSuggestionsHandler {
         types: [String]? = nil,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
+        guard limit >= 1, limit <= 25 else {
+            throw AuxError.usageError(message: "Limit must be between 1 and 25 (got \(limit))")
+        }
         let results = try await services.catalog.getSuggestions(query: query, limit: limit, types: types)
         let outputWriter = writer ?? options.makeOutputWriter()
         try outputWriter.write(OutputEnvelope(data: results))

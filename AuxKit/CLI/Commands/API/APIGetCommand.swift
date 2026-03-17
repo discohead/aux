@@ -27,13 +27,17 @@ public struct APIGetCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        let params = query.isEmpty ? nil : Dictionary(uniqueKeysWithValues: query.compactMap { kv -> (String, String)? in
-            let parts = kv.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2 else { return nil }
-            return (String(parts[0]), String(parts[1]))
-        })
-        try await APIGetHandler.handle(services: services, options: options, path: path, queryParams: params)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            let params = query.isEmpty ? nil : Dictionary(uniqueKeysWithValues: query.compactMap { kv -> (String, String)? in
+                let parts = kv.split(separator: "=", maxSplits: 1)
+                guard parts.count == 2 else { return nil }
+                return (String(parts[0]), String(parts[1]))
+            })
+            try await APIGetHandler.handle(services: services, options: options, path: path, queryParams: params)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

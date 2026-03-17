@@ -14,9 +14,13 @@ public struct SearchSuggestionsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let typeList = types?.split(separator: ",").map(String.init)
-        try await SearchSuggestionsHandler.handle(services: services, options: options, query: query, limit: limit, types: typeList)
+        do {
+            let services = ServiceContainer.live()
+            let typeList = types?.split(separator: ",").map(String.init)
+            try await SearchSuggestionsHandler.handle(services: services, options: options, query: query, limit: limit, types: typeList)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

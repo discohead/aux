@@ -27,7 +27,17 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
         } else {
             try executeScript("tell application \"Music\" to play")
         }
-        return try await getNowPlaying()
+        // When playing a specific track, there can be a brief delay before
+        // Music.app reports the new track. Retry once after a short pause.
+        do {
+            return try await getNowPlaying()
+        } catch {
+            if trackId != nil {
+                try await Task.sleep(nanoseconds: 300_000_000) // 0.3s
+                return try await getNowPlaying()
+            }
+            throw error
+        }
     }
 
     public func pause() async throws {
@@ -92,7 +102,7 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
         let script = """
         tell application "Music"
             set pState to player state as string
-            set shuffleEnabled to shuffling
+            set shuffleEnabled to shuffle enabled
             set repeatMode to song repeat as string
             set vol to sound volume
             set airplayOn to AirPlay enabled
@@ -123,7 +133,7 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     }
 
     public func setShuffle(_ enabled: Bool) async throws {
-        try executeScript("tell application \"Music\" to set shuffling to \(enabled)")
+        try executeScript("tell application \"Music\" to set shuffle enabled to \(enabled)")
     }
 
     public func setRepeat(_ mode: String) async throws {
@@ -143,11 +153,58 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
         let script = """
         tell application "Music"
             set t to (first track whose database ID is \(trackId))
-            set props to {database ID of t, persistent ID of t, name of t, artist of t, album artist of t, album of t, genre of t, year of t, composer of t, comment of t, grouping of t, track number of t, track count of t, disc number of t, disc count of t, compilation of t, enabled of t, rating of t, loved of t, disliked of t, bpm of t, volume adjustment of t, EQ preset of t, start of t, finish of t, sort name of t, sort artist of t, sort album artist of t, sort album of t, sort composer of t, lyrics of t, duration of t, time of t, date added of t, kind of t}
             set output to ""
-            repeat with p in props
-                set output to output & (p as string) & "|||"
-            end repeat
+            set output to output & (database ID of t as string) & "|||"
+            set output to output & (persistent ID of t as string) & "|||"
+            set output to output & name of t & "|||"
+            set output to output & artist of t & "|||"
+            set output to output & album artist of t & "|||"
+            set output to output & album of t & "|||"
+            set output to output & genre of t & "|||"
+            set output to output & (year of t as string) & "|||"
+            set output to output & composer of t & "|||"
+            set output to output & comment of t & "|||"
+            set output to output & grouping of t & "|||"
+            set output to output & (track number of t as string) & "|||"
+            set output to output & (track count of t as string) & "|||"
+            set output to output & (disc number of t as string) & "|||"
+            set output to output & (disc count of t as string) & "|||"
+            set output to output & (compilation of t as string) & "|||"
+            set output to output & (enabled of t as string) & "|||"
+            set output to output & (rating of t as string) & "|||"
+            try
+                set output to output & (favorited of t as string) & "|||"
+            on error
+                try
+                    set output to output & (loved of t as string) & "|||"
+                on error
+                    set output to output & "false" & "|||"
+                end try
+            end try
+            set output to output & (disliked of t as string) & "|||"
+            set output to output & (bpm of t as string) & "|||"
+            set output to output & (volume adjustment of t as string) & "|||"
+            try
+                set output to output & (name of EQ preset of t) & "|||"
+            on error
+                set output to output & "|||"
+            end try
+            set output to output & (start of t as string) & "|||"
+            set output to output & (finish of t as string) & "|||"
+            set output to output & sort name of t & "|||"
+            set output to output & sort artist of t & "|||"
+            set output to output & sort album artist of t & "|||"
+            set output to output & sort album of t & "|||"
+            set output to output & sort composer of t & "|||"
+            set output to output & lyrics of t & "|||"
+            set output to output & (duration of t as string) & "|||"
+            set output to output & time of t & "|||"
+            try
+                set output to output & (date added of t as string) & "|||"
+            on error
+                set output to output & "|||"
+            end try
+            set output to output & kind of t & "|||"
             return output
         end tell
         """
@@ -405,13 +462,26 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
             set n to name of t
             set a to artist of t
             set pc to played count of t
-            set pd to played date of t as string
+            set pd to ""
+            try
+                set pd to played date of t as string
+            end try
             set sc to skipped count of t
-            set sd to skipped date of t as string
+            set sd to ""
+            try
+                set sd to skipped date of t as string
+            end try
             set r to rating of t
-            set l to loved of t
+            set l to "false"
+            try
+                set l to (favorited of t as string)
+            on error
+                try
+                    set l to (loved of t as string)
+                end try
+            end try
             set d to disliked of t
-            return n & "|||" & a & "|||" & (pc as string) & "|||" & pd & "|||" & (sc as string) & "|||" & sd & "|||" & (r as string) & "|||" & (l as string) & "|||" & (d as string)
+            return n & "|||" & a & "|||" & (pc as string) & "|||" & pd & "|||" & (sc as string) & "|||" & sd & "|||" & (r as string) & "|||" & l & "|||" & (d as string)
         end tell
         """
         let result = try executeScriptWithResult(script)

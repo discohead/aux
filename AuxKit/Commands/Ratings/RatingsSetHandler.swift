@@ -9,6 +9,10 @@ import Foundation
 
 /// Handler for the `ratings set` command — sets a rating for an item.
 public struct RatingsSetHandler {
+
+    /// Valid Apple Music API resource types for ratings.
+    static let validTypes = ["songs", "albums", "playlists", "music-videos", "stations"]
+
     public static func handle(
         services: ServiceContainer,
         options: GlobalOptions,
@@ -17,8 +21,24 @@ public struct RatingsSetHandler {
         rating: Int,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
+        guard validTypes.contains(type) else {
+            throw AuxError.usageError(
+                message: "Invalid type '\(type)'. Valid types: \(validTypes.joined(separator: ", "))"
+            )
+        }
+        guard rating >= -1, rating <= 1 else {
+            throw AuxError.usageError(
+                message: "Rating must be -1 (dislike), 0 (neutral), or 1 (like). Got \(rating)"
+            )
+        }
+
         let path = "/v1/me/ratings/\(type)/\(id)"
-        let body = try JSONEncoder().encode(["value": rating])
+        // Apple Music API requires this specific body format for PUT ratings
+        let bodyDict: [String: Any] = [
+            "type": "rating",
+            "attributes": ["value": rating]
+        ]
+        let body = try JSONSerialization.data(withJSONObject: bodyDict)
         let _ = try await services.restAPI.put(path: path, body: body)
         let result = RatingResult(updated: true, id: id, rating: rating)
         let outputWriter = writer ?? options.makeOutputWriter()

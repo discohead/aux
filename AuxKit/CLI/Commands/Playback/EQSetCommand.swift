@@ -24,8 +24,12 @@ public struct EQSetCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await EQSetHandler.handle(services: services, options: options, preset: preset)
+        do {
+            let services = ServiceContainer.live()
+            try await EQSetHandler.handle(services: services, options: options, preset: preset)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

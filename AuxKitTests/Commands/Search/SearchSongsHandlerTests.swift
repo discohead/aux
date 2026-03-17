@@ -49,4 +49,26 @@ struct SearchSongsHandlerTests {
             )
         }
     }
+
+    @Test func rejectsLimitAbove25() async throws {
+        let container = ServiceContainer.mock()
+        await #expect(throws: AuxError.self) {
+            try await SearchSongsHandler.handle(
+                services: container, options: GlobalOptions(),
+                query: "test", limit: 1000,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func rejectsLimitBelow1() async throws {
+        let container = ServiceContainer.mock()
+        await #expect(throws: AuxError.self) {
+            try await SearchSongsHandler.handle(
+                services: container, options: GlobalOptions(),
+                query: "test", limit: 0,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
 }

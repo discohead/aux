@@ -9,10 +9,23 @@ import Foundation
 
 /// Result type for the current EQ preset query.
 public struct EQCurrentResult: Codable, Equatable, Sendable {
+    public let enabled: Bool
     public let preset: String?
 
-    public init(preset: String?) {
+    public init(enabled: Bool, preset: String?) {
+        self.enabled = enabled
         self.preset = preset
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(enabled, forKey: .enabled)
+        // Always encode preset, even if nil (explicit null in JSON)
+        try container.encode(preset, forKey: .preset)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case enabled, preset
     }
 }
 
@@ -24,7 +37,8 @@ public struct EQGetHandler {
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
         let result = try await services.appleScript.getEQ()
+        let enabled = result != nil
         let outputWriter = writer ?? options.makeOutputWriter()
-        try outputWriter.write(OutputEnvelope(data: EQCurrentResult(preset: result)))
+        try outputWriter.write(OutputEnvelope(data: EQCurrentResult(enabled: enabled, preset: result)))
     }
 }

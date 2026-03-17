@@ -24,8 +24,12 @@ public struct APIDeleteCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await APIDeleteHandler.handle(services: services, options: options, path: path)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await APIDeleteHandler.handle(services: services, options: options, path: path)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

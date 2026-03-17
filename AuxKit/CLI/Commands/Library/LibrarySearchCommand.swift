@@ -14,12 +14,16 @@ public struct LibrarySearchCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let typeArray = types.isEmpty ? [] : types.split(separator: ",").map(String.init)
-        try await LibrarySearchHandler.handle(
-            services: services, options: options,
-            query: query, types: typeArray, limit: limit
-        )
+        do {
+            let services = ServiceContainer.live()
+            let typeArray = types.isEmpty ? [] : types.split(separator: ",").map(String.init)
+            try await LibrarySearchHandler.handle(
+                services: services, options: options,
+                query: query, types: typeArray, limit: limit
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

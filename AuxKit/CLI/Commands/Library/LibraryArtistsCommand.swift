@@ -15,12 +15,16 @@ public struct LibraryArtistsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await LibraryArtistsHandler.handle(
-            services: services, options: options,
-            limit: limit, offset: offset, sort: sort,
-            filterName: filterName
-        )
+        do {
+            let services = ServiceContainer.live()
+            try await LibraryArtistsHandler.handle(
+                services: services, options: options,
+                limit: limit, offset: offset, sort: sort,
+                filterName: filterName
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

@@ -24,8 +24,12 @@ public struct AirPlaySelectCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await AirPlaySelectHandler.handle(services: services, options: options, name: name)
+        do {
+            let services = ServiceContainer.live()
+            try await AirPlaySelectHandler.handle(services: services, options: options, name: name)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

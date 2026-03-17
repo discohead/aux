@@ -180,15 +180,18 @@ public struct AuthStatusResult: Codable, Equatable, Sendable {
 public struct TokenResult: Codable, Equatable, Sendable {
     public let developerToken: String?
     public let userToken: String?
+    public let message: String?
 
     enum CodingKeys: String, CodingKey {
         case developerToken = "developer_token"
         case userToken = "user_token"
+        case message
     }
 
-    public init(developerToken: String? = nil, userToken: String? = nil) {
+    public init(developerToken: String? = nil, userToken: String? = nil, message: String? = nil) {
         self.developerToken = developerToken
         self.userToken = userToken
+        self.message = message
     }
 }
 

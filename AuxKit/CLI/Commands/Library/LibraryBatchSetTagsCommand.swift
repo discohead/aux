@@ -13,24 +13,17 @@ public struct LibraryBatchSetTagsCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let ids = trackIds.split(separator: ",").compactMap { Int($0) }
-        let fieldDict = parseFields(fields)
-        try await LibraryBatchSetTagsHandler.handle(
-            services: services, options: options,
-            trackIds: ids, fields: fieldDict
-        )
-    }
-
-    private func parseFields(_ raw: String) -> [String: String] {
-        var result: [String: String] = [:]
-        for pair in raw.split(separator: ",") {
-            let parts = pair.split(separator: "=", maxSplits: 1)
-            if parts.count == 2 {
-                result[String(parts[0])] = String(parts[1])
-            }
+        do {
+            let services = ServiceContainer.live()
+            let ids = trackIds.split(separator: ",").compactMap { Int($0) }
+            let fieldDict = try FieldParser.parse(fields)
+            try await LibraryBatchSetTagsHandler.handle(
+                services: services, options: options,
+                trackIds: ids, fields: fieldDict
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
         }
-        return result
     }
     public init() {}
 }

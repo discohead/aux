@@ -24,8 +24,12 @@ public struct CatalogAlbumByUPCCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await CatalogAlbumByUPCHandler.handle(services: services, options: options, upc: upc)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await CatalogAlbumByUPCHandler.handle(services: services, options: options, upc: upc)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

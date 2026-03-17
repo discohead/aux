@@ -25,7 +25,7 @@ public final class MockAuthService: AuthService, @unchecked Sendable {
         AuthStatusResult(authorizationStatus: "authorized")
     )
     public var getTokenResult: Result<TokenResult, Error> = .success(
-        TokenResult(developerToken: "mock-dev-token", userToken: "mock-user-token")
+        TokenResult(developerToken: "mock-dev-token", userToken: "mock-user-token", message: nil)
     )
 
     public init() {}

@@ -13,11 +13,15 @@ public struct LibrarySetArtworkCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await LibrarySetArtworkHandler.handle(
-            services: services, options: options,
-            trackId: trackId, imagePath: imagePath
-        )
+        do {
+            let services = ServiceContainer.live()
+            try await LibrarySetArtworkHandler.handle(
+                services: services, options: options,
+                trackId: trackId, imagePath: imagePath
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

@@ -23,4 +23,13 @@ struct LaunchModeDetectorTests {
         let cli: LaunchMode = .cli
         #expect(gui != cli)
     }
+
+    @Test func detectMethodForArgsReturnsCLIForAnyArgument() {
+        // Test the logic: any first argument should mean CLI mode
+        // We test this indirectly since CommandLine.arguments can't be mocked,
+        // but verify the detector function exists and returns valid results
+        let mode = LaunchModeDetector.detect()
+        // In test context, there are test runner arguments, so it should return .cli
+        #expect(mode == .cli)
+    }
 }

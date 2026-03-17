@@ -13,12 +13,16 @@ public struct LibraryRemoveFromPlaylistCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        let ids = trackIds.split(separator: ",").compactMap { Int($0) }
-        try await LibraryRemoveFromPlaylistHandler.handle(
-            services: services, options: options,
-            playlistName: playlistName, trackIds: ids
-        )
+        do {
+            let services = ServiceContainer.live()
+            let ids = trackIds.split(separator: ",").compactMap { Int($0) }
+            try await LibraryRemoveFromPlaylistHandler.handle(
+                services: services, options: options,
+                playlistName: playlistName, trackIds: ids
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

@@ -31,7 +31,7 @@ public final class LiveRecentlyPlayedService: RecentlyPlayedService, Sendable {
     public func getRecentlyPlayedContainers(limit: Int) async throws -> RecentlyPlayedContainersResult {
         // MusicRecentlyPlayedContainersRequest is not available in MusicKit.
         // Use MusicDataRequest to fetch from REST API instead.
-        guard let url = URL(string: "https://api.music.apple.com/v1/me/recent/containers?limit=\(limit)") else {
+        guard let url = URL(string: "https://api.music.apple.com/v1/me/recent/played?limit=\(limit)") else {
             throw AuxError.serviceError(message: "Failed to build recently played containers URL")
         }
         let urlRequest = URLRequest(url: url)

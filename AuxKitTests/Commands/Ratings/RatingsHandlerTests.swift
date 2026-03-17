@@ -32,6 +32,36 @@ struct RatingsGetHandlerTests {
         #expect(json.contains("\"data\""))
     }
 
+    @Test func parsesRatingValueFromResponse() async throws {
+        let container = ServiceContainer.mock()
+        let mockResponse = """
+        {"data":[{"id":"456","type":"ratings","attributes":{"value":1}}]}
+        """
+        (container.restAPI as! MockRESTAPIService).getResult = .success(Data(mockResponse.utf8))
+
+        var capturedData: Data?
+        let writer = JSONOutputWriter(pretty: false, destination: { capturedData = $0 })
+
+        try await RatingsGetHandler.handle(
+            services: container, options: GlobalOptions(),
+            type: "songs", id: "456", writer: writer
+        )
+        let json = String(data: capturedData!, encoding: .utf8)!
+        #expect(json.contains("\"rating\":1"))
+    }
+
+    @Test func rejectsInvalidType() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsGetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "invalid-type", id: "123",
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
     @Test func propagatesErrors() async throws {
         let container = ServiceContainer.mock()
         (container.restAPI as! MockRESTAPIService).getResult = .failure(AuxError.networkError(message: "offline"))
@@ -55,7 +85,7 @@ struct RatingsSetHandlerTests {
 
         try await RatingsSetHandler.handle(
             services: container, options: GlobalOptions(),
-            type: "albums", id: "789", rating: 5,
+            type: "albums", id: "789", rating: 1,
             writer: JSONOutputWriter(destination: { _ in })
         )
         #expect(mock.putCalled)
@@ -69,11 +99,47 @@ struct RatingsSetHandlerTests {
 
         try await RatingsSetHandler.handle(
             services: container, options: GlobalOptions(),
-            type: "songs", id: "101", rating: 3, writer: writer
+            type: "songs", id: "101", rating: 1, writer: writer
         )
         let json = String(data: capturedData!, encoding: .utf8)!
         #expect(json.contains("\"101\""))
-        #expect(json.contains("3"))
+        #expect(json.contains("1"))
+    }
+
+    @Test func rejectsInvalidType() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsSetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "invalid", id: "123", rating: 1,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func rejectsInvalidRatingValue() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsSetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "songs", id: "123", rating: 5,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func acceptsValidRatingValues() async throws {
+        let container = ServiceContainer.mock()
+        let writer = JSONOutputWriter(destination: { _ in })
+
+        for rating in [-1, 0, 1] {
+            try await RatingsSetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "songs", id: "123", rating: rating, writer: writer
+            )
+        }
     }
 
     @Test func propagatesErrors() async throws {
@@ -83,7 +149,7 @@ struct RatingsSetHandlerTests {
         await #expect(throws: AuxError.self) {
             try await RatingsSetHandler.handle(
                 services: container, options: GlobalOptions(),
-                type: "songs", id: "123", rating: 5,
+                type: "songs", id: "123", rating: 1,
                 writer: JSONOutputWriter(destination: { _ in })
             )
         }
@@ -118,6 +184,18 @@ struct RatingsDeleteHandlerTests {
         let json = String(data: capturedData!, encoding: .utf8)!
         #expect(json.contains("\"999\""))
         #expect(json.contains("\"data\""))
+    }
+
+    @Test func rejectsInvalidType() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsDeleteHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "invalid", id: "123",
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
     }
 
     @Test func propagatesErrors() async throws {

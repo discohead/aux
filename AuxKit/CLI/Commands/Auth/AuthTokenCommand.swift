@@ -24,8 +24,12 @@ public struct AuthTokenCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live() // placeholder until live services exist
-        try await AuthTokenHandler.handle(services: services, options: options, type: type)
+        do {
+            let services = ServiceContainer.live() // placeholder until live services exist
+            try await AuthTokenHandler.handle(services: services, options: options, type: type)
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

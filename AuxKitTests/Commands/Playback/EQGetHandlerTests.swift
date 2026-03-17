@@ -21,7 +21,7 @@ struct EQGetHandlerTests {
         #expect(mock.getEQCalled)
     }
 
-    @Test func returnsPresetInEnvelope() async throws {
+    @Test func returnsPresetWithEnabledTrue() async throws {
         let container = ServiceContainer.mock()
         (container.appleScript as! MockAppleScriptBridge).getEQResult = .success("Rock")
 
@@ -34,9 +34,10 @@ struct EQGetHandlerTests {
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let dataObj = json["data"] as! [String: Any]
         #expect(dataObj["preset"] as? String == "Rock")
+        #expect(dataObj["enabled"] as? Bool == true)
     }
 
-    @Test func returnsNullPresetWhenNone() async throws {
+    @Test func returnsDisabledWithNullPreset() async throws {
         let container = ServiceContainer.mock()
         (container.appleScript as! MockAppleScriptBridge).getEQResult = .success(nil)
 
@@ -48,8 +49,9 @@ struct EQGetHandlerTests {
         let data = try #require(capturedData)
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let dataObj = json["data"] as! [String: Any]
-        // preset should not have a String value when nil
-        #expect(dataObj["preset"] as? String == nil)
+        #expect(dataObj["enabled"] as? Bool == false)
+        // preset should be explicitly null (NSNull)
+        #expect(dataObj["preset"] is NSNull)
     }
 
     @Test func propagatesErrors() async throws {

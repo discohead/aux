@@ -13,11 +13,15 @@ public struct LibraryRenamePlaylistCommand: AsyncParsableCommand {
 
     public func run() async throws {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
-        let services = ServiceContainer.live()
-        try await LibraryRenamePlaylistHandler.handle(
-            services: services, options: options,
-            name: name, newName: newName
-        )
+        do {
+            let services = ServiceContainer.live()
+            try await LibraryRenamePlaylistHandler.handle(
+                services: services, options: options,
+                name: name, newName: newName
+            )
+        } catch {
+            CommandErrorHandler.handle(error, options: options)
+        }
     }
     public init() {}
 }

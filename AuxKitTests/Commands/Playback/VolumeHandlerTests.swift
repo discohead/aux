@@ -34,7 +34,7 @@ struct VolumeHandlerTests {
         let dataObj = json["data"] as! [String: Any]
         #expect(dataObj["success"] as? Bool == true)
         let message = dataObj["message"] as? String ?? ""
-        #expect(message.contains("75.0"))
+        #expect(message.contains("75"))
     }
 
     @Test func propagatesErrors() async throws {
@@ -47,5 +47,33 @@ struct VolumeHandlerTests {
                 writer: JSONOutputWriter(destination: { _ in })
             )
         }
+    }
+
+    @Test func rejectsVolumeAbove100() async throws {
+        let container = ServiceContainer.mock()
+        await #expect(throws: AuxError.self) {
+            try await VolumeHandler.handle(
+                services: container, options: GlobalOptions(), volume: 999.0,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func rejectsNegativeVolume() async throws {
+        let container = ServiceContainer.mock()
+        await #expect(throws: AuxError.self) {
+            try await VolumeHandler.handle(
+                services: container, options: GlobalOptions(), volume: -1.0,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func acceptsBoundaryVolumes() async throws {
+        let container = ServiceContainer.mock()
+        let writer = JSONOutputWriter(destination: { _ in })
+
+        try await VolumeHandler.handle(services: container, options: GlobalOptions(), volume: 0.0, writer: writer)
+        try await VolumeHandler.handle(services: container, options: GlobalOptions(), volume: 100.0, writer: writer)
     }
 }

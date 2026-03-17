@@ -19,13 +19,8 @@ public struct LaunchModeDetector {
         // Check command line arguments first — most reliable signal
         let args = CommandLine.arguments
         if args.count > 1 {
-            let firstArg = args[1]
-            // Any known subcommand or flag means CLI mode
-            let knownSubcommands = ["auth", "search", "catalog", "library", "playback",
-                                     "recommendations", "recently-played", "ratings", "api"]
-            if knownSubcommands.contains(firstArg) || firstArg.hasPrefix("-") {
-                return .cli
-            }
+            // Any argument at all means CLI mode — the user typed something after "aux"
+            return .cli
         }
 
         // Check if launched as a symlink named "aux-cli" from terminal
