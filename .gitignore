@@ -5,7 +5,7 @@ DerivedData/
 
 # Xcode user/workspace data
 xcuserdata/
-*.xcworkspace/xcshareddata/
+**/xcshareddata/
 
 # Profiling
 *.profraw
