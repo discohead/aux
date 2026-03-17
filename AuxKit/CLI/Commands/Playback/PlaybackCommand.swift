@@ -24,6 +24,8 @@ public struct PlaybackCommand: AsyncParsableCommand {
             EQListPresetsCommand.self,
             EQGetCommand.self,
             EQSetCommand.self,
+            PlayNextCommand.self,
+            AddToQueueCommand.self,
         ]
     )
     public init() {}
