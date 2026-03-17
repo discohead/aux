@@ -1,0 +1,15 @@
+# Build artifacts
+build/
+DerivedData/
+*.xcarchive
+
+# Xcode user/workspace data
+xcuserdata/
+*.xcworkspace/xcshareddata/
+
+# Profiling
+*.profraw
+*.profdata
+
+# OS files
+.DS_Store
