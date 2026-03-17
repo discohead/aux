@@ -681,13 +681,40 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     }
 
     public func getEQ() async throws -> String? {
+        // Music.app's AppleScript EQ enabled property is broken (always returns false).
+        // Use GUI scripting via System Events to read the actual state.
         let script = """
-        tell application "Music"
-            if EQ enabled then
-                return name of current EQ preset
-            else
-                return ""
-            end if
+        tell application "Music" to activate
+        delay 0.2
+        tell application "System Events"
+            tell process "Music"
+                -- Open Equalizer window if not already open
+                set eqOpen to false
+                repeat with w in (every window)
+                    if name of w is "Equalizer" then
+                        set eqOpen to true
+                    end if
+                end repeat
+                if not eqOpen then
+                    click menu item "Equalizer" of menu "Window" of menu bar 1
+                    delay 0.3
+                end if
+                tell window "Equalizer"
+                    set isOn to (value of checkbox "On") as integer
+                    set presetName to value of pop up button 1
+                end tell
+                -- Close the window if we opened it
+                if not eqOpen then
+                    tell window "Equalizer"
+                        click button 1
+                    end tell
+                end if
+                if isOn is 1 then
+                    return presetName
+                else
+                    return ""
+                end if
+            end tell
         end tell
         """
         let result = try executeScriptWithResult(script)
@@ -695,13 +722,40 @@ public final class LiveAppleScriptBridge: AppleScriptBridgeProtocol, @unchecked 
     }
 
     public func setEQ(preset: String) async throws {
+        // Music.app's AppleScript `set EQ enabled` is broken (-10006).
+        // Use GUI scripting via System Events to control the EQ window.
         let escapedPreset = preset.replacingOccurrences(of: "\"", with: "\\\"")
-        try executeScript("""
-        tell application "Music"
-            set EQ enabled to true
-            set current EQ preset to EQ preset "\(escapedPreset)"
+        let script = """
+        tell application "Music" to activate
+        delay 0.2
+        tell application "System Events"
+            tell process "Music"
+                -- Open Equalizer window if not already open
+                set eqOpen to false
+                repeat with w in (every window)
+                    if name of w is "Equalizer" then
+                        set eqOpen to true
+                    end if
+                end repeat
+                if not eqOpen then
+                    click menu item "Equalizer" of menu "Window" of menu bar 1
+                    delay 0.3
+                end if
+                tell window "Equalizer"
+                    -- Enable EQ if not already on
+                    if (value of checkbox "On") is 0 then
+                        click checkbox "On"
+                        delay 0.1
+                    end if
+                    -- Select the preset from the popup
+                    click pop up button 1
+                    delay 0.2
+                    click menu item "\(escapedPreset)" of menu 1 of pop up button 1
+                end tell
+            end tell
         end tell
-        """)
+        """
+        try executeScript(script)
     }
 
     // MARK: - Private Helpers
