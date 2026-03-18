@@ -21,6 +21,9 @@ struct ServiceContainerTests {
         #expect(container.auth is MockAuthService)
         #expect(container.recommendations is MockRecommendationsService)
         #expect(container.recentlyPlayed is MockRecentlyPlayedService)
+        #expect(container.history is MockHistoryService)
+        #expect(container.summaries is MockSummariesService)
+        #expect(container.favorites is MockFavoritesService)
     }
 
     @Test func containerAcceptsCustomServices() {
@@ -31,6 +34,9 @@ struct ServiceContainerTests {
         let customAuth = MockAuthService()
         let customRecs = MockRecommendationsService()
         let customRecent = MockRecentlyPlayedService()
+        let customHistory = MockHistoryService()
+        let customSummaries = MockSummariesService()
+        let customFavorites = MockFavoritesService()
 
         let container = ServiceContainer(
             catalog: customCatalog,
@@ -39,7 +45,10 @@ struct ServiceContainerTests {
             appleScript: customAppleScript,
             auth: customAuth,
             recommendations: customRecs,
-            recentlyPlayed: customRecent
+            recentlyPlayed: customRecent,
+            history: customHistory,
+            summaries: customSummaries,
+            favorites: customFavorites
         )
 
         #expect(container.catalog as AnyObject === customCatalog)
@@ -49,5 +58,8 @@ struct ServiceContainerTests {
         #expect(container.auth as AnyObject === customAuth)
         #expect(container.recommendations as AnyObject === customRecs)
         #expect(container.recentlyPlayed as AnyObject === customRecent)
+        #expect(container.history as AnyObject === customHistory)
+        #expect(container.summaries as AnyObject === customSummaries)
+        #expect(container.favorites as AnyObject === customFavorites)
     }
 }

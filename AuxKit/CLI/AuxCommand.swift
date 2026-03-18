@@ -22,6 +22,9 @@ public struct AuxCommand: AsyncParsableCommand {
             RecentlyPlayedCommand.self,
             RatingsCommand.self,
             APICommand.self,
+            HistoryCommand.self,
+            FavoritesCommand.self,
+            SummariesCommand.self,
         ]
     )
 

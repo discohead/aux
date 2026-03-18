@@ -14,6 +14,10 @@ public struct StationDTO: Codable, Equatable, Sendable {
     public let url: String?
     public let isLive: Bool?
     public let editorialNotes: EditorialNotes?
+    public let stationProviderName: String?
+    public let contentRating: String?
+    public let duration: Int?
+    public let episodeNumber: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -22,6 +26,10 @@ public struct StationDTO: Codable, Equatable, Sendable {
         case url
         case isLive = "is_live"
         case editorialNotes = "editorial_notes"
+        case stationProviderName = "station_provider_name"
+        case contentRating = "content_rating"
+        case duration
+        case episodeNumber = "episode_number"
     }
 
     public init(
@@ -30,7 +38,11 @@ public struct StationDTO: Codable, Equatable, Sendable {
         artworkUrl: String? = nil,
         url: String? = nil,
         isLive: Bool? = nil,
-        editorialNotes: EditorialNotes? = nil
+        editorialNotes: EditorialNotes? = nil,
+        stationProviderName: String? = nil,
+        contentRating: String? = nil,
+        duration: Int? = nil,
+        episodeNumber: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -38,6 +50,10 @@ public struct StationDTO: Codable, Equatable, Sendable {
         self.url = url
         self.isLive = isLive
         self.editorialNotes = editorialNotes
+        self.stationProviderName = stationProviderName
+        self.contentRating = contentRating
+        self.duration = duration
+        self.episodeNumber = episodeNumber
     }
 
     public static func fixture(
@@ -46,7 +62,11 @@ public struct StationDTO: Codable, Equatable, Sendable {
         artworkUrl: String? = nil,
         url: String? = nil,
         isLive: Bool? = nil,
-        editorialNotes: EditorialNotes? = nil
+        editorialNotes: EditorialNotes? = nil,
+        stationProviderName: String? = nil,
+        contentRating: String? = nil,
+        duration: Int? = nil,
+        episodeNumber: Int? = nil
     ) -> Self {
         .init(
             id: id,
@@ -54,7 +74,11 @@ public struct StationDTO: Codable, Equatable, Sendable {
             artworkUrl: artworkUrl,
             url: url,
             isLive: isLive,
-            editorialNotes: editorialNotes
+            editorialNotes: editorialNotes,
+            stationProviderName: stationProviderName,
+            contentRating: contentRating,
+            duration: duration,
+            episodeNumber: episodeNumber
         )
     }
 }

@@ -13,6 +13,7 @@ public struct LibrarySongsCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Filter by artist") var artist: String?
     @Option(name: .long, help: "Filter by album") var album: String?
     @Flag(name: .long, help: "Only downloaded tracks") var downloadedOnly = false
+    @Flag(name: .long, help: "Fetch all pages automatically") var all = false
     @Flag(name: .long, help: "Pretty-print JSON") var pretty = false
     @Flag(name: .long, help: "Suppress non-JSON output") var quiet = false
 
@@ -24,7 +25,7 @@ public struct LibrarySongsCommand: AsyncParsableCommand {
                 services: services, options: options,
                 limit: limit, offset: offset, sort: sort,
                 title: title, artist: artist, album: album,
-                downloadedOnly: downloadedOnly
+                downloadedOnly: downloadedOnly, allPages: all
             )
         } catch {
             CommandErrorHandler.handle(error, options: options)

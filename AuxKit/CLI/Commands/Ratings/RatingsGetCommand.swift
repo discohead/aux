@@ -19,6 +19,9 @@ public struct RatingsGetCommand: AsyncParsableCommand {
     @Argument(help: "Item ID")
     var id: String
 
+    @Flag(name: .long, help: "Use library ratings instead of catalog ratings")
+    var library = false
+
     @Flag(name: .long, help: "Pretty-print JSON output")
     var pretty = false
 
@@ -29,7 +32,7 @@ public struct RatingsGetCommand: AsyncParsableCommand {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
         do {
             let services = ServiceContainer.live() // placeholder until live services exist
-            try await RatingsGetHandler.handle(services: services, options: options, type: type, id: id)
+            try await RatingsGetHandler.handle(services: services, options: options, type: type, id: id, library: library)
         } catch {
             CommandErrorHandler.handle(error, options: options)
         }

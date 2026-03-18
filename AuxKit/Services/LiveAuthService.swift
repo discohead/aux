@@ -14,12 +14,20 @@ public final class LiveAuthService: AuthService, Sendable {
 
     public func checkStatus() async throws -> AuthStatusResult {
         let status = MusicAuthorization.currentStatus
-        return AuthStatusResult(authorizationStatus: statusString(status))
+        var countryCode: String? = nil
+        if status == .authorized {
+            countryCode = try? await MusicDataRequest.currentCountryCode
+        }
+        return AuthStatusResult(authorizationStatus: statusString(status), countryCode: countryCode)
     }
 
     public func requestAuthorization() async throws -> AuthStatusResult {
         let status = await MusicAuthorization.request()
-        return AuthStatusResult(authorizationStatus: statusString(status))
+        var countryCode: String? = nil
+        if status == .authorized {
+            countryCode = try? await MusicDataRequest.currentCountryCode
+        }
+        return AuthStatusResult(authorizationStatus: statusString(status), countryCode: countryCode)
     }
 
     public func getToken(type: String) async throws -> TokenResult {

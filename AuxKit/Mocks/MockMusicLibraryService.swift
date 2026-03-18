@@ -13,6 +13,7 @@ public final class MockMusicLibraryService: MusicLibraryService, @unchecked Send
     // MARK: - Call Tracking
 
     public var getSongsCalled = false
+    public var getSongsLastSort: String?
     public var getAlbumsCalled = false
     public var getArtistsCalled = false
     public var getPlaylistsCalled = false
@@ -34,6 +35,7 @@ public final class MockMusicLibraryService: MusicLibraryService, @unchecked Send
 
     public func reset() {
         getSongsCalled = false
+        getSongsLastSort = nil
         getAlbumsCalled = false
         getArtistsCalled = false
         getPlaylistsCalled = false
@@ -45,6 +47,7 @@ public final class MockMusicLibraryService: MusicLibraryService, @unchecked Send
 
     public func getSongs(limit: Int, offset: Int, sort: String?, filters: LibrarySongFilters?) async throws -> [SongDTO] {
         getSongsCalled = true
+        getSongsLastSort = sort
         return try getSongsResult.get()
     }
 

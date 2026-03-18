@@ -47,6 +47,37 @@ struct CatalogChartsHandlerTests {
         #expect(json.contains("Hit Song"))
     }
 
+    @Test func passesGenreIdToService() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.catalog as! MockMusicCatalogService
+        mock.getChartsResult = .success(ChartsResult(charts: []))
+
+        let writer = JSONOutputWriter(destination: { _ in })
+        try await CatalogChartsHandler.handle(
+            services: container, options: GlobalOptions(),
+            kinds: ["most-played"], types: ["songs"], genreId: "14", limit: 25,
+            writer: writer
+        )
+
+        #expect(mock.getChartsCalled)
+        #expect(mock.getChartsLastGenreId == "14")
+    }
+
+    @Test func passesNilGenreIdWhenNotSpecified() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.catalog as! MockMusicCatalogService
+        mock.getChartsResult = .success(ChartsResult(charts: []))
+
+        let writer = JSONOutputWriter(destination: { _ in })
+        try await CatalogChartsHandler.handle(
+            services: container, options: GlobalOptions(),
+            kinds: ["most-played"], types: ["songs"], genreId: nil, limit: 25,
+            writer: writer
+        )
+
+        #expect(mock.getChartsLastGenreId == nil)
+    }
+
     @Test func propagatesErrors() async throws {
         let container = ServiceContainer.mock()
         let mock = container.catalog as! MockMusicCatalogService

@@ -35,6 +35,8 @@ public final class LiveMusicLibraryService: MusicLibraryService, Sendable {
             case "-artist": request.sort(by: \.artistName, ascending: false)
             case "album": request.sort(by: \.albumTitle, ascending: true)
             case "-album": request.sort(by: \.albumTitle, ascending: false)
+            case "play-count": request.sort(by: \.playCount, ascending: true)
+            case "-play-count": request.sort(by: \.playCount, ascending: false)
             default: break
             }
         }

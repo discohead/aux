@@ -141,7 +141,7 @@ public final class LiveMusicCatalogService: MusicCatalogService, Sendable {
 
     // MARK: - Get by ID
 
-    public func getSong(id: String) async throws -> SongDTO {
+    public func getSong(id: String, include: [String]? = nil) async throws -> SongDTO {
         let request = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: MusicItemID(id))
         let response = try await request.response()
         guard let song = response.items.first else {
@@ -156,7 +156,7 @@ public final class LiveMusicCatalogService: MusicCatalogService, Sendable {
         return response.items.map { mapSong($0) }
     }
 
-    public func getAlbum(id: String) async throws -> AlbumDTO {
+    public func getAlbum(id: String, include: [String]? = nil) async throws -> AlbumDTO {
         let request = MusicCatalogResourceRequest<Album>(matching: \.id, equalTo: MusicItemID(id))
         let response = try await request.response()
         guard let album = response.items.first else {
@@ -171,7 +171,7 @@ public final class LiveMusicCatalogService: MusicCatalogService, Sendable {
         return response.items.map { mapAlbum($0) }
     }
 
-    public func getArtist(id: String) async throws -> ArtistDTO {
+    public func getArtist(id: String, include: [String]? = nil) async throws -> ArtistDTO {
         let request = MusicCatalogResourceRequest<Artist>(matching: \.id, equalTo: MusicItemID(id))
         let response = try await request.response()
         guard let artist = response.items.first else {
@@ -180,7 +180,7 @@ public final class LiveMusicCatalogService: MusicCatalogService, Sendable {
         return mapArtist(artist)
     }
 
-    public func getPlaylist(id: String) async throws -> PlaylistDTO {
+    public func getPlaylist(id: String, include: [String]? = nil) async throws -> PlaylistDTO {
         let request = MusicCatalogResourceRequest<Playlist>(matching: \.id, equalTo: MusicItemID(id))
         let response = try await request.response()
         guard let playlist = response.items.first else {
@@ -265,7 +265,13 @@ public final class LiveMusicCatalogService: MusicCatalogService, Sendable {
         if chartTypes.isEmpty {
             chartTypes = [Song.self, Album.self, Playlist.self]
         }
-        var request = MusicCatalogChartsRequest(types: chartTypes)
+        var genre: Genre?
+        if let genreId = genreId {
+            let genreRequest = MusicCatalogResourceRequest<Genre>(matching: \.id, equalTo: MusicItemID(genreId))
+            let genreResponse = try await genreRequest.response()
+            genre = genreResponse.items.first
+        }
+        var request = MusicCatalogChartsRequest(genre: genre, types: chartTypes)
         request.limit = limit
         let response = try await request.response()
         var entries: [ChartEntry] = []
@@ -422,7 +428,11 @@ public final class LiveMusicCatalogService: MusicCatalogService, Sendable {
             name: station.name,
             artworkUrl: station.artwork?.url(width: 300, height: 300)?.absoluteString,
             url: station.url?.absoluteString,
-            isLive: station.isLive
+            isLive: station.isLive,
+            stationProviderName: station.stationProviderName,
+            contentRating: station.contentRating.map { String(describing: $0) },
+            duration: station.duration.map { Int($0 * 1000) },
+            episodeNumber: station.episodeNumber
         )
     }
 

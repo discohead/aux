@@ -24,12 +24,12 @@ public protocol MusicCatalogService: Sendable {
 
     // MARK: - Get by ID
 
-    func getSong(id: String) async throws -> SongDTO
+    func getSong(id: String, include: [String]?) async throws -> SongDTO
     func getSongByISRC(isrc: String) async throws -> [SongDTO]
-    func getAlbum(id: String) async throws -> AlbumDTO
+    func getAlbum(id: String, include: [String]?) async throws -> AlbumDTO
     func getAlbumByUPC(upc: String) async throws -> [AlbumDTO]
-    func getArtist(id: String) async throws -> ArtistDTO
-    func getPlaylist(id: String) async throws -> PlaylistDTO
+    func getArtist(id: String, include: [String]?) async throws -> ArtistDTO
+    func getPlaylist(id: String, include: [String]?) async throws -> PlaylistDTO
     func getMusicVideo(id: String) async throws -> MusicVideoDTO
     func getStation(id: String) async throws -> StationDTO
     func getCurator(id: String) async throws -> CuratorDTO
@@ -42,4 +42,21 @@ public protocol MusicCatalogService: Sendable {
 
     func getCharts(kinds: [String], types: [String], genreId: String?, limit: Int) async throws -> ChartsResult
     func getStorefront(id: String) async throws -> StorefrontDTO
+}
+
+// MARK: - Default Parameters
+
+public extension MusicCatalogService {
+    func getSong(id: String) async throws -> SongDTO {
+        try await getSong(id: id, include: nil)
+    }
+    func getAlbum(id: String) async throws -> AlbumDTO {
+        try await getAlbum(id: id, include: nil)
+    }
+    func getArtist(id: String) async throws -> ArtistDTO {
+        try await getArtist(id: id, include: nil)
+    }
+    func getPlaylist(id: String) async throws -> PlaylistDTO {
+        try await getPlaylist(id: id, include: nil)
+    }
 }

@@ -17,6 +17,11 @@ public final class MockRESTAPIService: RESTAPIService, @unchecked Sendable {
     public var putCalled = false
     public var deleteCalled = false
 
+    // MARK: - Parameter Tracking
+
+    public var lastGetPath: String?
+    public var lastGetQueryParams: [String: String]?
+
     // MARK: - Configurable Results
 
     public var getResult: Result<Data, Error> = .success(Data("{}".utf8))
@@ -39,6 +44,8 @@ public final class MockRESTAPIService: RESTAPIService, @unchecked Sendable {
 
     public func get(path: String, queryParams: [String: String]?) async throws -> Data {
         getCalled = true
+        lastGetPath = path
+        lastGetQueryParams = queryParams
         return try getResult.get()
     }
 

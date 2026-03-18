@@ -40,6 +40,44 @@ struct CatalogAlbumByUPCHandlerTests {
         #expect(json.contains("UPC Album"))
     }
 
+    @Test func handlesCommaSeparatedUPCs() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.catalog as! MockMusicCatalogService
+        mock.getAlbumByUPCResult = .success([.fixture(id: "1", title: "Album A")])
+
+        var capturedData: Data?
+        let writer = JSONOutputWriter(destination: { capturedData = $0 })
+
+        try await CatalogAlbumByUPCHandler.handle(
+            services: container, options: GlobalOptions(),
+            upc: "012345678901, 012345678902, 012345678903", writer: writer
+        )
+
+        #expect(mock.getAlbumByUPCCallCount == 3)
+        let data = try #require(capturedData)
+        let json = String(data: data, encoding: .utf8)!
+        #expect(json.contains("Album A"))
+    }
+
+    @Test func singleUPCStillWorks() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.catalog as! MockMusicCatalogService
+        mock.getAlbumByUPCResult = .success([.fixture(id: "42", title: "Single Album")])
+
+        var capturedData: Data?
+        let writer = JSONOutputWriter(destination: { capturedData = $0 })
+
+        try await CatalogAlbumByUPCHandler.handle(
+            services: container, options: GlobalOptions(),
+            upc: "012345678901", writer: writer
+        )
+
+        #expect(mock.getAlbumByUPCCallCount == 1)
+        let data = try #require(capturedData)
+        let json = String(data: data, encoding: .utf8)!
+        #expect(json.contains("Single Album"))
+    }
+
     @Test func propagatesErrors() async throws {
         let container = ServiceContainer.mock()
         let mock = container.catalog as! MockMusicCatalogService

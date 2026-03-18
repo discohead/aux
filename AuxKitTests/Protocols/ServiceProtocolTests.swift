@@ -29,12 +29,12 @@ struct MusicCatalogServiceTests {
             func getSuggestions(query: String, limit: Int, types: [String]?) async throws -> SuggestionsResult {
                 SuggestionsResult(terms: [], topResults: nil)
             }
-            func getSong(id: String) async throws -> SongDTO { SongDTO.fixture() }
+            func getSong(id: String, include: [String]?) async throws -> SongDTO { SongDTO.fixture() }
             func getSongByISRC(isrc: String) async throws -> [SongDTO] { [] }
-            func getAlbum(id: String) async throws -> AlbumDTO { AlbumDTO.fixture() }
+            func getAlbum(id: String, include: [String]?) async throws -> AlbumDTO { AlbumDTO.fixture() }
             func getAlbumByUPC(upc: String) async throws -> [AlbumDTO] { [] }
-            func getArtist(id: String) async throws -> ArtistDTO { ArtistDTO.fixture() }
-            func getPlaylist(id: String) async throws -> PlaylistDTO { PlaylistDTO.fixture() }
+            func getArtist(id: String, include: [String]?) async throws -> ArtistDTO { ArtistDTO.fixture() }
+            func getPlaylist(id: String, include: [String]?) async throws -> PlaylistDTO { PlaylistDTO.fixture() }
             func getMusicVideo(id: String) async throws -> MusicVideoDTO { MusicVideoDTO.fixture() }
             func getStation(id: String) async throws -> StationDTO { StationDTO.fixture() }
             func getCurator(id: String) async throws -> CuratorDTO { CuratorDTO.fixture() }
@@ -52,7 +52,7 @@ struct MusicCatalogServiceTests {
         let songs = try await sut.searchSongs(query: "test", limit: 10, offset: 0)
         #expect(songs.isEmpty)
 
-        let song = try await sut.getSong(id: "1")
+        let song = try await sut.getSong(id: "1", include: nil)
         #expect(song.id == "1")
 
         let charts = try await sut.getCharts(kinds: ["most-played"], types: ["songs"], genreId: nil, limit: 25)

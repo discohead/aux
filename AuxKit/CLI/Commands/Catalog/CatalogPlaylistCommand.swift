@@ -16,6 +16,9 @@ public struct CatalogPlaylistCommand: AsyncParsableCommand {
     @Argument(help: "Apple Music catalog ID")
     var id: String
 
+    @Option(name: .long, help: "Relationships to include (e.g. tracks, curator)")
+    var include: [String] = []
+
     @Flag(name: .long, help: "Pretty-print JSON output")
     var pretty = false
 
@@ -26,7 +29,7 @@ public struct CatalogPlaylistCommand: AsyncParsableCommand {
         let options = GlobalOptions(pretty: pretty, quiet: quiet)
         do {
             let services = ServiceContainer.live() // placeholder until live services exist
-            try await CatalogPlaylistHandler.handle(services: services, options: options, id: id)
+            try await CatalogPlaylistHandler.handle(services: services, options: options, id: id, include: include.isEmpty ? nil : include)
         } catch {
             CommandErrorHandler.handle(error, options: options)
         }

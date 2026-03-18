@@ -16,6 +16,9 @@ public struct ServiceContainer: Sendable {
     public let auth: any AuthService
     public let recommendations: any RecommendationsService
     public let recentlyPlayed: any RecentlyPlayedService
+    public let history: any HistoryService
+    public let summaries: any SummariesService
+    public let favorites: any FavoritesService
 
     public init(
         catalog: any MusicCatalogService,
@@ -24,7 +27,10 @@ public struct ServiceContainer: Sendable {
         appleScript: any AppleScriptBridgeProtocol,
         auth: any AuthService,
         recommendations: any RecommendationsService,
-        recentlyPlayed: any RecentlyPlayedService
+        recentlyPlayed: any RecentlyPlayedService,
+        history: any HistoryService,
+        summaries: any SummariesService,
+        favorites: any FavoritesService
     ) {
         self.catalog = catalog
         self.library = library
@@ -33,6 +39,9 @@ public struct ServiceContainer: Sendable {
         self.auth = auth
         self.recommendations = recommendations
         self.recentlyPlayed = recentlyPlayed
+        self.history = history
+        self.summaries = summaries
+        self.favorites = favorites
     }
 
     /// Creates a container with live service implementations for production use.
@@ -45,7 +54,10 @@ public struct ServiceContainer: Sendable {
             appleScript: LiveAppleScriptBridge(),
             auth: LiveAuthService(),
             recommendations: LiveRecommendationsService(),
-            recentlyPlayed: LiveRecentlyPlayedService()
+            recentlyPlayed: LiveRecentlyPlayedService(),
+            history: LiveHistoryService(),
+            summaries: LiveSummariesService(),
+            favorites: LiveFavoritesService()
         )
     }
 
@@ -58,7 +70,10 @@ public struct ServiceContainer: Sendable {
             appleScript: MockAppleScriptBridge(),
             auth: MockAuthService(),
             recommendations: MockRecommendationsService(),
-            recentlyPlayed: MockRecentlyPlayedService()
+            recentlyPlayed: MockRecentlyPlayedService(),
+            history: MockHistoryService(),
+            summaries: MockSummariesService(),
+            favorites: MockFavoritesService()
         )
     }
 }

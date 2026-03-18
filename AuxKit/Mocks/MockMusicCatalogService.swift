@@ -36,7 +36,16 @@ public final class MockMusicCatalogService: MusicCatalogService, @unchecked Send
     public var getGenreCalled = false
     public var getAllGenresCalled = false
     public var getChartsCalled = false
+    public var getChartsLastGenreId: String?
+    public var getSongByISRCLastISRC: String?
+    public var getSongByISRCCallCount = 0
+    public var getAlbumByUPCLastUPC: String?
+    public var getAlbumByUPCCallCount = 0
     public var getStorefrontCalled = false
+
+    // MARK: - Parameter Tracking
+
+    public var lastInclude: [String]?
 
     // MARK: - Configurable Results
 
@@ -95,6 +104,11 @@ public final class MockMusicCatalogService: MusicCatalogService, @unchecked Send
         getGenreCalled = false
         getAllGenresCalled = false
         getChartsCalled = false
+        getChartsLastGenreId = nil
+        getSongByISRCLastISRC = nil
+        getSongByISRCCallCount = 0
+        getAlbumByUPCLastUPC = nil
+        getAlbumByUPCCallCount = 0
         getStorefrontCalled = false
     }
 
@@ -152,33 +166,41 @@ public final class MockMusicCatalogService: MusicCatalogService, @unchecked Send
 
     // MARK: - Get by ID
 
-    public func getSong(id: String) async throws -> SongDTO {
+    public func getSong(id: String, include: [String]? = nil) async throws -> SongDTO {
         getSongCalled = true
+        lastInclude = include
         return try getSongResult.get()
     }
 
     public func getSongByISRC(isrc: String) async throws -> [SongDTO] {
         getSongByISRCCalled = true
+        getSongByISRCLastISRC = isrc
+        getSongByISRCCallCount += 1
         return try getSongByISRCResult.get()
     }
 
-    public func getAlbum(id: String) async throws -> AlbumDTO {
+    public func getAlbum(id: String, include: [String]? = nil) async throws -> AlbumDTO {
         getAlbumCalled = true
+        lastInclude = include
         return try getAlbumResult.get()
     }
 
     public func getAlbumByUPC(upc: String) async throws -> [AlbumDTO] {
         getAlbumByUPCCalled = true
+        getAlbumByUPCLastUPC = upc
+        getAlbumByUPCCallCount += 1
         return try getAlbumByUPCResult.get()
     }
 
-    public func getArtist(id: String) async throws -> ArtistDTO {
+    public func getArtist(id: String, include: [String]? = nil) async throws -> ArtistDTO {
         getArtistCalled = true
+        lastInclude = include
         return try getArtistResult.get()
     }
 
-    public func getPlaylist(id: String) async throws -> PlaylistDTO {
+    public func getPlaylist(id: String, include: [String]? = nil) async throws -> PlaylistDTO {
         getPlaylistCalled = true
+        lastInclude = include
         return try getPlaylistResult.get()
     }
 
@@ -221,6 +243,7 @@ public final class MockMusicCatalogService: MusicCatalogService, @unchecked Send
 
     public func getCharts(kinds: [String], types: [String], genreId: String?, limit: Int) async throws -> ChartsResult {
         getChartsCalled = true
+        getChartsLastGenreId = genreId
         return try getChartsResult.get()
     }
 

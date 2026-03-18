@@ -17,11 +17,20 @@ public struct LibrarySongsHandler {
         artist: String? = nil,
         album: String? = nil,
         downloadedOnly: Bool = false,
+        allPages: Bool = false,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
         let filters = LibrarySongFilters(title: title, artist: artist, album: album, downloadedOnly: downloadedOnly)
-        let results = try await services.library.getSongs(limit: limit, offset: offset, sort: sort, filters: filters)
         let outputWriter = writer ?? options.makeOutputWriter()
-        try outputWriter.write(OutputEnvelope(data: results, meta: PaginationMeta(limit: limit, offset: offset, total: nil, hasNext: results.count == limit)))
+
+        if allPages {
+            let allResults = try await PaginationHelper.fetchAll(pageSize: limit) { pageLimit, pageOffset in
+                try await services.library.getSongs(limit: pageLimit, offset: pageOffset, sort: sort, filters: filters)
+            }
+            try outputWriter.write(OutputEnvelope(data: allResults, meta: PaginationMeta(limit: allResults.count, offset: 0, total: allResults.count, hasNext: false)))
+        } else {
+            let results = try await services.library.getSongs(limit: limit, offset: offset, sort: sort, filters: filters)
+            try outputWriter.write(OutputEnvelope(data: results, meta: PaginationMeta(limit: limit, offset: offset, total: nil, hasNext: results.count == limit)))
+        }
     }
 }

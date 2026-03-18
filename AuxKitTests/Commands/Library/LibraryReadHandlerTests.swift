@@ -50,6 +50,34 @@ struct LibrarySongsHandlerTests {
         }
     }
 
+    @Test func passesSortToService() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.library as! MockMusicLibraryService
+        mock.getSongsResult = .success([])
+
+        let writer = JSONOutputWriter(destination: { _ in })
+        try await LibrarySongsHandler.handle(
+            services: container, options: GlobalOptions(),
+            sort: "play-count", writer: writer
+        )
+        #expect(mock.getSongsCalled)
+        #expect(mock.getSongsLastSort == "play-count")
+    }
+
+    @Test func passesDescendingPlayCountSort() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.library as! MockMusicLibraryService
+        mock.getSongsResult = .success([])
+
+        let writer = JSONOutputWriter(destination: { _ in })
+        try await LibrarySongsHandler.handle(
+            services: container, options: GlobalOptions(),
+            sort: "-play-count", writer: writer
+        )
+        #expect(mock.getSongsCalled)
+        #expect(mock.getSongsLastSort == "-play-count")
+    }
+
     @Test func passesFiltersToService() async throws {
         let container = ServiceContainer.mock()
         let mock = container.library as! MockMusicLibraryService
@@ -62,6 +90,41 @@ struct LibrarySongsHandlerTests {
             downloadedOnly: true, writer: writer
         )
         #expect(mock.getSongsCalled)
+    }
+
+    @Test func allPagesFetchesAllItems() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.library as! MockMusicLibraryService
+        mock.getSongsResult = .success([.fixture(id: "1"), .fixture(id: "2")])
+
+        var capturedData: Data?
+        let writer = JSONOutputWriter(pretty: false, destination: { capturedData = $0 })
+
+        // With allPages=true, pageSize=25 and mock returning 2 items (< 25), stops after 1 call
+        try await LibrarySongsHandler.handle(
+            services: container, options: GlobalOptions(),
+            limit: 25, allPages: true, writer: writer
+        )
+        #expect(mock.getSongsCalled)
+        let json = String(data: capturedData!, encoding: .utf8)!
+        #expect(json.contains("\"data\""))
+    }
+
+    @Test func allPagesFalseUsesStandardPagination() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.library as! MockMusicLibraryService
+        mock.getSongsResult = .success([.fixture()])
+
+        var capturedData: Data?
+        let writer = JSONOutputWriter(pretty: false, destination: { capturedData = $0 })
+
+        try await LibrarySongsHandler.handle(
+            services: container, options: GlobalOptions(),
+            allPages: false, writer: writer
+        )
+        #expect(mock.getSongsCalled)
+        let json = String(data: capturedData!, encoding: .utf8)!
+        #expect(json.contains("\"has_next\""))
     }
 }
 

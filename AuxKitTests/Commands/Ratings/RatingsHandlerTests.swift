@@ -76,6 +76,59 @@ struct RatingsGetHandlerTests {
     }
 }
 
+// MARK: - RatingsGetHandler Library Tests
+
+struct RatingsGetHandlerLibraryTests {
+    @Test func usesLibraryRatingsPath() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.restAPI as! MockRESTAPIService
+
+        try await RatingsGetHandler.handle(
+            services: container, options: GlobalOptions(),
+            type: "library-songs", id: "123", library: true,
+            writer: JSONOutputWriter(destination: { _ in })
+        )
+        #expect(mock.getCalled)
+        #expect(mock.lastGetPath == "/v1/me/library-ratings/library-songs/123")
+    }
+
+    @Test func acceptsLibraryTypes() async throws {
+        let container = ServiceContainer.mock()
+        let writer = JSONOutputWriter(destination: { _ in })
+
+        for type in ["library-songs", "library-albums", "library-playlists", "library-music-videos"] {
+            try await RatingsGetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: type, id: "123", library: true, writer: writer
+            )
+        }
+    }
+
+    @Test func rejectsCatalogTypesWhenLibrary() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsGetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "songs", id: "123", library: true,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func rejectsLibraryTypesWhenNotLibrary() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsGetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "library-songs", id: "123", library: false,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+}
+
 // MARK: - RatingsSetHandler Tests
 
 struct RatingsSetHandlerTests {
@@ -156,6 +209,46 @@ struct RatingsSetHandlerTests {
     }
 }
 
+// MARK: - RatingsSetHandler Library Tests
+
+struct RatingsSetHandlerLibraryTests {
+    @Test func usesLibraryRatingsPath() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.restAPI as! MockRESTAPIService
+
+        try await RatingsSetHandler.handle(
+            services: container, options: GlobalOptions(),
+            type: "library-albums", id: "456", rating: 1, library: true,
+            writer: JSONOutputWriter(destination: { _ in })
+        )
+        #expect(mock.putCalled)
+    }
+
+    @Test func rejectsCatalogTypesWhenLibrary() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsSetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "albums", id: "123", rating: 1, library: true,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func acceptsLibraryTypes() async throws {
+        let container = ServiceContainer.mock()
+        let writer = JSONOutputWriter(destination: { _ in })
+
+        for type in ["library-songs", "library-albums", "library-playlists", "library-music-videos"] {
+            try await RatingsSetHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: type, id: "123", rating: 1, library: true, writer: writer
+            )
+        }
+    }
+}
+
 // MARK: - RatingsDeleteHandler Tests
 
 struct RatingsDeleteHandlerTests {
@@ -207,6 +300,46 @@ struct RatingsDeleteHandlerTests {
                 services: container, options: GlobalOptions(),
                 type: "songs", id: "123",
                 writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+}
+
+// MARK: - RatingsDeleteHandler Library Tests
+
+struct RatingsDeleteHandlerLibraryTests {
+    @Test func usesLibraryRatingsPath() async throws {
+        let container = ServiceContainer.mock()
+        let mock = container.restAPI as! MockRESTAPIService
+
+        try await RatingsDeleteHandler.handle(
+            services: container, options: GlobalOptions(),
+            type: "library-songs", id: "789", library: true,
+            writer: JSONOutputWriter(destination: { _ in })
+        )
+        #expect(mock.deleteCalled)
+    }
+
+    @Test func rejectsCatalogTypesWhenLibrary() async throws {
+        let container = ServiceContainer.mock()
+
+        await #expect(throws: AuxError.self) {
+            try await RatingsDeleteHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: "playlists", id: "123", library: true,
+                writer: JSONOutputWriter(destination: { _ in })
+            )
+        }
+    }
+
+    @Test func acceptsLibraryTypes() async throws {
+        let container = ServiceContainer.mock()
+        let writer = JSONOutputWriter(destination: { _ in })
+
+        for type in ["library-songs", "library-albums", "library-playlists", "library-music-videos"] {
+            try await RatingsDeleteHandler.handle(
+                services: container, options: GlobalOptions(),
+                type: type, id: "123", library: true, writer: writer
             )
         }
     }

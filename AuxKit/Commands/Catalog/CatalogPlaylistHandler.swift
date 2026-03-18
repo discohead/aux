@@ -13,9 +13,10 @@ public struct CatalogPlaylistHandler {
         services: ServiceContainer,
         options: GlobalOptions,
         id: String,
+        include: [String]? = nil,
         writer: (any OutputWriterProtocol)? = nil
     ) async throws {
-        let result = try await services.catalog.getPlaylist(id: id)
+        let result = try await services.catalog.getPlaylist(id: id, include: include)
         let outputWriter = writer ?? options.makeOutputWriter()
         try outputWriter.write(OutputEnvelope(data: result))
     }

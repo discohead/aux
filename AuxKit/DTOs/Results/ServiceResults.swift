@@ -163,15 +163,18 @@ public struct SubscriptionInfo: Codable, Equatable, Sendable {
 public struct AuthStatusResult: Codable, Equatable, Sendable {
     public let authorizationStatus: String
     public let subscription: SubscriptionInfo?
+    public let countryCode: String?
 
     enum CodingKeys: String, CodingKey {
         case authorizationStatus = "authorization_status"
         case subscription
+        case countryCode = "country_code"
     }
 
-    public init(authorizationStatus: String, subscription: SubscriptionInfo? = nil) {
+    public init(authorizationStatus: String, subscription: SubscriptionInfo? = nil, countryCode: String? = nil) {
         self.authorizationStatus = authorizationStatus
         self.subscription = subscription
+        self.countryCode = countryCode
     }
 }
 
@@ -461,5 +464,196 @@ public struct AddToLibraryResult: Codable, Equatable, Sendable {
         self.added = added
         self.ids = ids
         self.type = type
+    }
+}
+
+// MARK: - HeavyRotationResult
+
+public struct HeavyRotationItem: Codable, Equatable, Sendable {
+    public let type: String
+    public let id: String
+    public let name: String
+    public let artworkUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, id, name
+        case artworkUrl = "artwork_url"
+    }
+
+    public init(type: String, id: String, name: String, artworkUrl: String? = nil) {
+        self.type = type
+        self.id = id
+        self.name = name
+        self.artworkUrl = artworkUrl
+    }
+
+    public static func fixture(
+        type: String = "album",
+        id: String = "hr.1",
+        name: String = "Heavy Rotation Album",
+        artworkUrl: String? = nil
+    ) -> Self {
+        .init(type: type, id: id, name: name, artworkUrl: artworkUrl)
+    }
+}
+
+public struct HeavyRotationResult: Codable, Equatable, Sendable {
+    public let items: [HeavyRotationItem]
+
+    public init(items: [HeavyRotationItem]) {
+        self.items = items
+    }
+}
+
+// MARK: - RecentlyAddedResult
+
+public struct RecentlyAddedItem: Codable, Equatable, Sendable {
+    public let type: String
+    public let id: String
+    public let name: String
+    public let artworkUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, id, name
+        case artworkUrl = "artwork_url"
+    }
+
+    public init(type: String, id: String, name: String, artworkUrl: String? = nil) {
+        self.type = type
+        self.id = id
+        self.name = name
+        self.artworkUrl = artworkUrl
+    }
+
+    public static func fixture(
+        type: String = "album",
+        id: String = "ra.1",
+        name: String = "Recently Added Album",
+        artworkUrl: String? = nil
+    ) -> Self {
+        .init(type: type, id: id, name: name, artworkUrl: artworkUrl)
+    }
+}
+
+public struct RecentlyAddedResult: Codable, Equatable, Sendable {
+    public let items: [RecentlyAddedItem]
+
+    public init(items: [RecentlyAddedItem]) {
+        self.items = items
+    }
+}
+
+// MARK: - MusicSummariesResult
+
+public struct MusicSummaryEntry: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let playCount: Int?
+    public let artworkUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case playCount = "play_count"
+        case artworkUrl = "artwork_url"
+    }
+
+    public init(id: String, name: String, playCount: Int? = nil, artworkUrl: String? = nil) {
+        self.id = id
+        self.name = name
+        self.playCount = playCount
+        self.artworkUrl = artworkUrl
+    }
+
+    public static func fixture(
+        id: String = "ms.1",
+        name: String = "Top Song",
+        playCount: Int? = 42,
+        artworkUrl: String? = nil
+    ) -> Self {
+        .init(id: id, name: name, playCount: playCount, artworkUrl: artworkUrl)
+    }
+}
+
+public struct MusicSummariesResult: Codable, Equatable, Sendable {
+    public let year: String
+    public let period: String?
+    public let topArtists: [MusicSummaryEntry]?
+    public let topAlbums: [MusicSummaryEntry]?
+    public let topSongs: [MusicSummaryEntry]?
+
+    enum CodingKeys: String, CodingKey {
+        case year, period
+        case topArtists = "top_artists"
+        case topAlbums = "top_albums"
+        case topSongs = "top_songs"
+    }
+
+    public init(
+        year: String,
+        period: String? = nil,
+        topArtists: [MusicSummaryEntry]? = nil,
+        topAlbums: [MusicSummaryEntry]? = nil,
+        topSongs: [MusicSummaryEntry]? = nil
+    ) {
+        self.year = year
+        self.period = period
+        self.topArtists = topArtists
+        self.topAlbums = topAlbums
+        self.topSongs = topSongs
+    }
+}
+
+// MARK: - FavoriteResult
+
+public struct FavoriteResult: Codable, Equatable, Sendable {
+    public let added: Bool
+    public let type: String
+    public let id: String
+
+    public init(added: Bool, type: String, id: String) {
+        self.added = added
+        self.type = type
+        self.id = id
+    }
+}
+
+// MARK: - StationGenresResult
+
+public struct StationGenre: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+
+    public static func fixture(
+        id: String = "sg.1",
+        name: String = "Pop"
+    ) -> Self {
+        .init(id: id, name: name)
+    }
+}
+
+public struct StationGenresResult: Codable, Equatable, Sendable {
+    public let genres: [StationGenre]
+
+    public init(genres: [StationGenre]) {
+        self.genres = genres
+    }
+}
+
+// MARK: - EquivalentResult
+
+public struct EquivalentResult: Codable, Equatable, Sendable {
+    public let type: String
+    public let songs: [SongDTO]?
+    public let albums: [AlbumDTO]?
+
+    public init(type: String, songs: [SongDTO]? = nil, albums: [AlbumDTO]? = nil) {
+        self.type = type
+        self.songs = songs
+        self.albums = albums
     }
 }

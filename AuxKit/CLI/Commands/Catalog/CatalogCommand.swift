@@ -20,6 +20,11 @@ public struct CatalogCommand: AsyncParsableCommand {
             CatalogAllGenresCommand.self,
             CatalogChartsCommand.self,
             CatalogStorefrontCommand.self,
+            CatalogEquivalentCommand.self,
+            CatalogPersonalStationCommand.self,
+            CatalogLiveStationsCommand.self,
+            CatalogStationGenresCommand.self,
+            CatalogStationsForGenreCommand.self,
         ]
     )
     public init() {}

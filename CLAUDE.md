@@ -50,7 +50,7 @@ SPM dependency: `swift-argument-parser` >= 1.3.0 (resolved at 1.7.0).
 ### Key patterns
 
 - **Handler/Command split:** Every CLI command has a Handler (in AuxKit, testable with mocks) and a Command (in auxCLI, thin ArgumentParser wrapper). Tests target handlers, not commands.
-- **Protocol-based DI:** Seven service protocols in `AuxKit/Protocols/` with mock implementations in `AuxKit/Mocks/`. `ServiceContainer` holds all services; `.mock()` returns test doubles.
+- **Protocol-based DI:** Ten service protocols in `AuxKit/Protocols/` with mock implementations in `AuxKit/Mocks/`. `ServiceContainer` holds all services; `.mock()` returns test doubles.
 - **DTOs over raw MusicKit types:** 19 DTO structs in `AuxKit/DTOs/` provide a stable JSON contract. All use explicit `CodingKeys` with snake_case naming and `static func fixture(...)` factories for tests.
 - **Output envelope:** All CLI output goes through `OutputEnvelope<T>` (success with optional `PaginationMeta`) or `CLIErrorResponse`. JSON to stdout, diagnostics to stderr.
 - **Shared JSON coding:** `JSONEncoder.aux` / `JSONDecoder.aux` in `AuxKit/Output/AuxJSONCoding.swift` (uses `.useDefaultKeys` since DTOs define explicit snake_case `CodingKeys`).
@@ -60,7 +60,7 @@ SPM dependency: `swift-argument-parser` >= 1.3.0 (resolved at 1.7.0).
 
 This project follows strict red-green-refactor TDD. Implementation plan is in `context/aux-tdd-implementation-plan.md`.
 
-- Phases 0–23 are substantially complete (~497 tests across 83 test files).
+- Phases 0–23 are substantially complete (~576 tests, 554 passing, 22 skipped).
 - Tests use Swift Testing framework (`import Testing`, `@Test`, `#expect`), not XCTest.
 - Every DTO has a `.fixture()` static factory for test data.
 - Integration tests requiring MusicKit authorization use `.disabled("Requires MusicKit authorization")` trait.
@@ -75,4 +75,4 @@ This project follows strict red-green-refactor TDD. Implementation plan is in `c
 
 - Full design doc: `context/building-aux.md`
 - API spec: `context/aux-api-spec.yaml`
-- CLI has ~90 leaf commands across 9 groups: auth, search, catalog, library, playback, recommendations, recently-played, ratings, api
+- CLI has ~110 leaf commands across 12 groups: auth, search, catalog, library, playback, recommendations, recently-played, ratings, api, history, favorites, summaries
