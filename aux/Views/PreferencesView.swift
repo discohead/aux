@@ -10,8 +10,18 @@ import AuxKit
 
 struct PreferencesView: View {
     @State private var installPath = CLIInstaller.defaultInstallPath
-    @State private var isInstalled = CLIInstaller.isInstalled()
+    @State private var installStatus: InstallStatus = .unknown
     @State private var statusMessage = ""
+    @State private var showEscalationAlert = false
+    @State private var pendingAction: PendingAction?
+
+    private enum InstallStatus {
+        case unknown, correct, stale, notInstalled
+    }
+
+    private enum PendingAction {
+        case install, uninstall
+    }
 
     var body: some View {
         Form {
@@ -20,22 +30,23 @@ struct PreferencesView: View {
                     Text("Install Path:")
                     TextField("Path", text: $installPath)
                         .textFieldStyle(.roundedBorder)
+                        .onChange(of: installPath) { refreshStatus() }
                 }
 
                 HStack {
                     Circle()
-                        .fill(isInstalled ? .green : .red)
+                        .fill(statusColor)
                         .frame(width: 8, height: 8)
-                    Text(isInstalled ? "CLI installed" : "CLI not installed")
+                    Text(statusText)
                         .foregroundStyle(.secondary)
                 }
 
                 HStack {
-                    Button(isInstalled ? "Reinstall CLI" : "Install CLI") {
+                    Button(installStatus == .notInstalled ? "Install CLI" : "Reinstall CLI") {
                         installCLI()
                     }
 
-                    if isInstalled {
+                    if installStatus == .correct || installStatus == .stale {
                         Button("Uninstall CLI") {
                             uninstallCLI()
                         }
@@ -47,27 +58,6 @@ struct PreferencesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-
-                if showManualInstall {
-                    HStack {
-                        Text(manualInstallCommand)
-                            .font(.system(.caption, design: .monospaced))
-                            .textSelection(.enabled)
-                            .padding(6)
-                            .background(Color(nsColor: .textBackgroundColor))
-                            .cornerRadius(4)
-
-                        Button {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(manualInstallCommand, forType: .string)
-                            statusMessage = "Copied to clipboard! Paste in Terminal and run."
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Copy to clipboard")
-                    }
-                }
             }
 
             Section("About") {
@@ -76,33 +66,93 @@ struct PreferencesView: View {
         }
         .padding()
         .frame(width: 400)
+        .onAppear { refreshStatus() }
+        .alert("Administrator Privileges Required", isPresented: $showEscalationAlert) {
+            Button("OK") { performPrivilegedAction() }
+            Button("Cancel", role: .cancel) {
+                pendingAction = nil
+                statusMessage = ""
+            }
+        } message: {
+            Text("aux will now prompt with 'osascript' for Administrator privileges to \(pendingAction == .install ? "install" : "uninstall") the shell command.")
+        }
     }
 
-    @State private var showManualInstall = false
+    private var statusColor: Color {
+        switch installStatus {
+        case .correct: return .green
+        case .stale: return .yellow
+        case .notInstalled, .unknown: return .red
+        }
+    }
 
-    private var manualInstallCommand: String {
-        "sudo ln -sf /Applications/aux.app/Contents/MacOS/aux \(installPath)"
+    private var statusText: String {
+        switch installStatus {
+        case .correct: return "CLI installed"
+        case .stale: return "CLI installed (pointing to different app)"
+        case .notInstalled, .unknown: return "CLI not installed"
+        }
+    }
+
+    private func refreshStatus() {
+        if !CLIInstaller.isInstalled(at: installPath) {
+            installStatus = .notInstalled
+        } else if CLIInstaller.isCorrectlyInstalled(at: installPath) {
+            installStatus = .correct
+        } else {
+            installStatus = .stale
+        }
     }
 
     private func installCLI() {
+        // Try direct install first (works if user has write permission)
         do {
             try CLIInstaller.install(at: installPath)
-            isInstalled = true
-            showManualInstall = false
+            refreshStatus()
             statusMessage = "CLI installed successfully at \(installPath)"
+            return
         } catch {
-            showManualInstall = true
-            statusMessage = "Requires elevated permissions. Run this in Terminal:"
+            // Permission error — escalate via osascript
         }
+
+        pendingAction = .install
+        showEscalationAlert = true
     }
 
     private func uninstallCLI() {
         do {
             try CLIInstaller.uninstall(at: installPath)
-            isInstalled = false
+            refreshStatus()
             statusMessage = "CLI uninstalled"
+            return
         } catch {
-            statusMessage = "Uninstall failed: \(error.localizedDescription)"
+            // Permission error — escalate via osascript
+        }
+
+        pendingAction = .uninstall
+        showEscalationAlert = true
+    }
+
+    private func performPrivilegedAction() {
+        guard let action = pendingAction else { return }
+        pendingAction = nil
+
+        Task {
+            do {
+                switch action {
+                case .install:
+                    try await CLIInstaller.installWithPrivileges(at: installPath)
+                    statusMessage = "CLI installed successfully at \(installPath)"
+                case .uninstall:
+                    try await CLIInstaller.uninstallWithPrivileges(at: installPath)
+                    statusMessage = "CLI uninstalled"
+                }
+                refreshStatus()
+            } catch CLIInstaller.InstallError.userCancelled {
+                statusMessage = ""
+            } catch {
+                statusMessage = "Failed: \(error.localizedDescription)"
+            }
         }
     }
 }
