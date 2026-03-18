@@ -8,7 +8,9 @@ Aux is a macOS application and CLI that bridges Apple Music (MusicKit framework,
 
 ## Build & Test Commands
 
-Use `xcodebuildmcp` CLI instead of raw `xcodebuild`. Discover commands via `xcodebuildmcp --help` and `xcodebuildmcp tools`. See `.claude/skills/xcodebuildmcp-cli/SKILL.md` for the full skill.
+Use `xcodebuildmcp` CLI instead of raw `xcodebuild`. Discover commands via `xcodebuildmcp --help` and `xcodebuildmcp tools`. Full skill reference:
+
+@.claude/skills/xcodebuildmcp-cli/SKILL.md
 
 ```bash
 # Discover available workflows and tools
@@ -16,10 +18,10 @@ xcodebuildmcp tools
 xcodebuildmcp macos --help
 
 # Build and test via xcodebuildmcp (preferred)
-xcodebuildmcp macos build --scheme AuxKit --project aux.xcodeproj
-xcodebuildmcp macos build --scheme auxCLI --project aux.xcodeproj
-xcodebuildmcp macos build --scheme aux --project aux.xcodeproj
-xcodebuildmcp macos test --scheme AuxKit --project aux.xcodeproj
+xcodebuildmcp macos build --scheme AuxKit --project-path aux.xcodeproj
+xcodebuildmcp macos build --scheme auxCLI --project-path aux.xcodeproj
+xcodebuildmcp macos build --scheme aux --project-path aux.xcodeproj
+xcodebuildmcp macos test --scheme AuxKitTests --project-path aux.xcodeproj
 
 # Fallback: raw xcodebuild (if xcodebuildmcp unavailable)
 xcodebuild -scheme AuxKit -destination 'platform=macOS' build
@@ -43,7 +45,7 @@ SPM dependency: `swift-argument-parser` >= 1.3.0 (resolved at 1.7.0).
 
 ### Three-layer service architecture
 
-1. **MusicKit framework** — catalog search, library reads, auth, recommendations (type-safe, automatic tokens)
+1. **MusicKit framework** — catalog search, library reads, auth, recommendations, history, favorites, summaries (type-safe, automatic tokens)
 2. **REST API via `MusicDataRequest`** — library writes (create playlist, add to library, ratings) because `MusicLibrary.shared.add()` is `@available(macOS, unavailable)`
 3. **AppleScript bridge to Music.app** — playback control, metadata writing, artwork, file import, track deletion, AirPlay, EQ, play stats (capabilities that exist nowhere else)
 
@@ -60,7 +62,7 @@ SPM dependency: `swift-argument-parser` >= 1.3.0 (resolved at 1.7.0).
 
 This project follows strict red-green-refactor TDD. Implementation plan is in `context/aux-tdd-implementation-plan.md`.
 
-- Phases 0–23 are substantially complete (~576 tests, 554 passing, 22 skipped).
+- Phases 0–23 are substantially complete (~584 tests, 562 passing, 22 skipped).
 - Tests use Swift Testing framework (`import Testing`, `@Test`, `#expect`), not XCTest.
 - Every DTO has a `.fixture()` static factory for test data.
 - Integration tests requiring MusicKit authorization use `.disabled("Requires MusicKit authorization")` trait.
@@ -75,4 +77,4 @@ This project follows strict red-green-refactor TDD. Implementation plan is in `c
 
 - Full design doc: `context/building-aux.md`
 - API spec: `context/aux-api-spec.yaml`
-- CLI has ~110 leaf commands across 12 groups: auth, search, catalog, library, playback, recommendations, recently-played, ratings, api, history, favorites, summaries
+- CLI has 100 leaf commands across 12 groups: auth, search, catalog, library, playback, recommendations, recently-played, ratings, api, history, favorites, summaries

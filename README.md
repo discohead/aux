@@ -28,7 +28,7 @@ Launch **Aux.app**. On first run it will prompt for Apple Music access — click
 
 ### 3. Install the CLI
 
-From the Aux menu bar, select **Install aux Command in PATH**. This creates a symlink at `/usr/local/bin/aux` so you can run `aux` from any terminal.
+From the Aux menu bar, select **Install aux Command in PATH**. A native macOS password dialog will appear to authorize creating a symlink at `/usr/local/bin/aux`. After that you can run `aux` from any terminal.
 
 ## Quick Start
 
@@ -59,17 +59,20 @@ Every command outputs structured JSON to stdout. Diagnostics go to stderr. Add `
 
 ## Commands
 
-Aux provides **88 commands** across 9 groups:
+Aux provides **100 commands** across 12 groups:
 
 | Group | Commands | Description |
 |-------|----------|-------------|
 | `auth` | `status`, `request`, `token` | Authorization and token management |
 | `search` | `songs`, `albums`, `artists`, `playlists`, `music-videos`, `stations`, `curators`, `radio-shows`, `all`, `suggestions` | Catalog search and autocomplete |
-| `catalog` | `song`, `album`, `artist`, `playlist`, `music-video`, `station`, `curator`, `radio-show`, `record-label`, `genre`, `all-genres`, `charts`, `storefront`, `song-by-isrc`, `album-by-upc` | Look up catalog items by ID, ISRC, or UPC |
+| `catalog` | `song`, `album`, `artist`, `playlist`, `music-video`, `station`, `curator`, `radio-show`, `record-label`, `genre`, `all-genres`, `charts`, `storefront`, `song-by-isrc`, `album-by-upc`, `equivalent`, `personal-station`, `live-stations`, `station-genres`, `stations-for-genre` | Look up catalog items by ID, ISRC, UPC; station discovery; storefront equivalents |
 | `library` | `songs`, `albums`, `artists`, `playlists`, `music-videos`, `search`, `add`, `delete`, `create-playlist`, `delete-playlist`, `rename-playlist`, `add-to-playlist`, `remove-from-playlist`, `reorder-tracks`, `find-duplicates`, `get-tags`, `set-tags`, `batch-set-tags`, `get-lyrics`, `set-lyrics`, `get-artwork`, `get-artwork-count`, `set-artwork`, `get-file-info`, `reveal`, `import`, `convert`, `get-play-stats`, `set-play-stats`, `reset-play-stats`, `list-playlists` | Full library management — browse, edit metadata, import files, manage playlists |
 | `playback` | `play`, `pause`, `stop`, `next`, `previous`, `seek`, `fast-forward`, `rewind`, `now-playing`, `status`, `volume`, `shuffle`, `repeat`, `airplay-list`, `airplay-current`, `airplay-select`, `eq-list`, `eq-get`, `eq-set`, `play-next`, `add-to-queue` | Transport controls, queue management, AirPlay, EQ |
-| `recently-played` | `tracks`, `containers` | Recently played history |
+| `history` | `heavy-rotation`, `recently-added`, `recently-played-stations` | Listening history and heavy rotation |
+| `recently-played` | `tracks`, `containers` | Recently played tracks and containers |
+| `favorites` | `add` | Add items to favorites |
 | `recommendations` | `list` | Personalized recommendations |
+| `summaries` | `get` | Apple Music Replay / listening summaries |
 | `ratings` | `get`, `set`, `delete` | Rate and review library items |
 | `api` | `get`, `post`, `put`, `delete` | Raw Apple Music API requests |
 
@@ -142,7 +145,9 @@ Aux is designed as a tool for coding agents. Point your agent at the CLI and it 
 - Control playback without leaving the terminal
 - Read and write track metadata (tags, lyrics, artwork)
 - Import local audio files into Apple Music
-- Access play statistics and listening history
+- Access play statistics, listening history, and Apple Music Replay summaries
+- Manage favorites and ratings
+- Discover stations by genre, browse live radio, and find storefront equivalents
 
 ### Scripting and Automation
 
