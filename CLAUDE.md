@@ -70,8 +70,27 @@ This project follows strict red-green-refactor TDD. Implementation plan is in `c
 ## Platform Requirements
 
 - macOS 14+ (Sonoma) — required for `MusicLibraryRequest`
-- MusicKit requires an `.app` bundle with `com.apple.application-identifier` entitlement and provisioning profile
+- MusicKit requires an `.app` bundle with `com.apple.application-identifier` entitlement and MusicKit App Service enabled on the App ID (under "App Services" tab in Apple Developer portal, not "Capabilities")
+- No special MusicKit entitlement key is needed in the entitlements file — automatic token generation works with just the App ID configuration
 - Xcode automatic signing handles profile creation
+
+## Build & Install Chain
+
+The `aux` app is a dual-mode binary (GUI + CLI in one). `/usr/local/bin/aux` is a symlink to `/Applications/aux.app/Contents/MacOS/aux`.
+
+```bash
+# Build release
+xcodebuildmcp macos build --scheme aux --project-path aux.xcodeproj --configuration Release
+
+# Install — MUST rm first, then use ditto (not cp -R)
+rm -rf /Applications/aux.app
+ditto ~/Library/Developer/Xcode/DerivedData/aux-*/Build/Products/Release/aux.app /Applications/aux.app
+
+# Symlink (one-time setup)
+ln -sf /Applications/aux.app/Contents/MacOS/aux /usr/local/bin/aux
+```
+
+**Warning:** Never use `cp -R` to overwrite `.app` bundles. It fails silently with embedded framework symlinks, leaving stale binaries in place. Always `rm -rf` the old bundle first, then copy with `ditto`.
 
 ## Key Reference
 
