@@ -36,8 +36,7 @@ struct AuxMCPServerTests {
 
         // List tools
         let result = try await client.listTools()
-        // With stub tool extensions returning [], we expect 0 tools
-        #expect(result.tools.count >= 0)
+        #expect(result.tools.count > 90, "Expected more than 90 tools, got \(result.tools.count)")
 
         await server.stop()
     }
@@ -81,9 +80,9 @@ struct AuxMCPServerTests {
         let client = Client(name: "test-client", version: "1.0.0")
         _ = try await client.connect(transport: clientTransport)
 
-        // Verify server responds to ping (listTools works, so server is alive)
+        // Verify server responds (listTools works, so server is alive)
         let tools = try await client.listTools()
-        #expect(tools.tools.count >= 0)
+        #expect(tools.tools.count > 90)
 
         // Stop and verify no crash
         await server.stop()

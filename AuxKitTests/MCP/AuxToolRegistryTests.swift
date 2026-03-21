@@ -4,12 +4,11 @@ import Testing
 @Suite("AuxToolRegistry Tests")
 struct AuxToolRegistryTests {
 
-    @Test("registry initializes with stub tools")
+    @Test("registry initializes with all tool groups")
     func registryInitializes() {
         let registry = AuxToolRegistry()
         let tools = registry.allTools()
-        // Stubs return empty arrays, so count is 0 for now
-        #expect(tools.count >= 0)
+        #expect(tools.count >= 90, "Expected at least 90 tools, got \(tools.count)")
     }
 
     @Test("all tool names follow naming convention")
@@ -24,5 +23,13 @@ struct AuxToolRegistryTests {
     func lookupUnknown() {
         let registry = AuxToolRegistry()
         #expect(registry.tool(named: "aux_nonexistent") == nil)
+    }
+
+    @Test("lookup by name returns correct tool")
+    func lookupByName() {
+        let registry = AuxToolRegistry()
+        let tool = registry.tool(named: "aux_auth_status")
+        #expect(tool != nil)
+        #expect(tool?.name == "aux_auth_status")
     }
 }
