@@ -17,7 +17,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
                     let writer = CaptureOutputWriter()
                     try await CatalogSongHandler.handle(
@@ -40,7 +42,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let isrc = args?["isrc"]?.stringValue ?? ""
+                    guard let isrc = args?["isrc"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: isrc")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogSongByISRCHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -63,7 +67,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
                     let writer = CaptureOutputWriter()
                     try await CatalogAlbumHandler.handle(
@@ -86,7 +92,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let upc = args?["upc"]?.stringValue ?? ""
+                    guard let upc = args?["upc"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: upc")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogAlbumByUPCHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -109,7 +117,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
                     let writer = CaptureOutputWriter()
                     try await CatalogArtistHandler.handle(
@@ -133,7 +143,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
                     let writer = CaptureOutputWriter()
                     try await CatalogPlaylistHandler.handle(
@@ -156,7 +168,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogMusicVideoHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -178,7 +192,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogStationHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -200,7 +216,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogCuratorHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -222,7 +240,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogRadioShowHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -244,7 +264,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogGenreHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -285,7 +307,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogRecordLabelHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -335,7 +359,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
                     let writer = CaptureOutputWriter()
                     try await CatalogStorefrontHandler.handle(
                         services: services, options: GlobalOptions(pretty: true),
@@ -427,7 +453,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let genreId = args?["genre_id"]?.stringValue ?? ""
+                    guard let genreId = args?["genre_id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: genre_id")
+                    }
                     let storefront = args?["storefront"]?.stringValue ?? "us"
                     let limit = args?["limit"]?.intValue ?? 25
                     let writer = CaptureOutputWriter()
@@ -453,8 +481,12 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let id = args?["id"]?.stringValue ?? ""
-                    let storefront = args?["target_storefront"]?.stringValue ?? "us"
+                    guard let id = args?["id"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: id")
+                    }
+                    guard let storefront = args?["target_storefront"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: target_storefront")
+                    }
                     let type = args?["type"]?.stringValue ?? "songs"
                     let writer = CaptureOutputWriter()
                     try await CatalogEquivalentHandler.handle(

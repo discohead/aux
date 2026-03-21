@@ -32,32 +32,49 @@ public final class AuxMCPServer: Sendable {
         }
 
         await server.withMethodHandler(CallTool.self) { [registry, services] params in
+            func makeErrorResult(_ error: Error) -> CallTool.Result {
+                let errorResponse: CLIErrorResponse
+                if let auxError = error as? AuxError {
+                    errorResponse = auxError.toCLIErrorResponse()
+                } else {
+                    errorResponse = CLIErrorResponse(
+                        code: "internal",
+                        message: error.localizedDescription
+                    )
+                }
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let errorString: String
+                if let data = try? encoder.encode(errorResponse),
+                   let json = String(data: data, encoding: .utf8) {
+                    errorString = json
+                } else {
+                    errorString = #"{"error":{"code":"internal","message":"An unknown error occurred"}}"#
+                }
+                return CallTool.Result(content: [.text(errorString)], isError: true)
+            }
+
             guard let toolDef = registry.tool(named: params.name) else {
-                return CallTool.Result(
-                    content: [.text("""
-                        {"error":{"code":"unknown_tool","message":"Unknown tool: \(params.name)"}}
-                        """)],
-                    isError: true
+                let errorResponse = CLIErrorResponse(
+                    code: "unknown_tool",
+                    message: "Unknown tool: \(params.name)"
                 )
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let errorString: String
+                if let data = try? encoder.encode(errorResponse),
+                   let json = String(data: data, encoding: .utf8) {
+                    errorString = json
+                } else {
+                    errorString = #"{"error":{"code":"unknown_tool","message":"Unknown tool"}}"#
+                }
+                return CallTool.Result(content: [.text(errorString)], isError: true)
             }
             do {
                 let json = try await toolDef.execute(services, params.arguments)
                 return CallTool.Result(content: [.text(json)], isError: false)
-            } catch let error as AuxError {
-                let errorResponse = error.toCLIErrorResponse()
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let errorJSON = try? encoder.encode(errorResponse)
-                let errorString = errorJSON.flatMap { String(data: $0, encoding: .utf8) }
-                    ?? "{\"error\":{\"code\":\"internal\",\"message\":\"\(error.message)\"}}"
-                return CallTool.Result(content: [.text(errorString)], isError: true)
             } catch {
-                return CallTool.Result(
-                    content: [.text("""
-                        {"error":{"code":"internal","message":"\(error.localizedDescription)"}}
-                        """)],
-                    isError: true
-                )
+                return makeErrorResult(error)
             }
         }
 

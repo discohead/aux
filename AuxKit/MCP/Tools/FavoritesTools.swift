@@ -15,8 +15,12 @@ extension AuxToolRegistry {
                     required: ["type", "id"]
                 )
             ) { services, args in
-                let type = args?["type"]?.stringValue ?? ""
-                let id = args?["id"]?.stringValue ?? ""
+                guard let type = args?["type"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: type")
+                }
+                guard let id = args?["id"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: id")
+                }
                 let writer = CaptureOutputWriter()
                 try await FavoritesAddHandler.handle(
                     services: services,

@@ -18,7 +18,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -48,7 +50,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -78,7 +82,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -108,7 +114,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -138,7 +146,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -168,7 +178,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -198,7 +210,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -228,7 +242,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let limit = args?["limit"]?.intValue ?? 25
                     let offset = args?["offset"]?.intValue ?? 0
                     let writer = CaptureOutputWriter()
@@ -259,7 +275,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
                     let types = args?["types"]?.arrayValue?.compactMap(\.stringValue)
                         ?? ["songs", "albums", "artists", "playlists"]
                     let limit = args?["limit"]?.intValue ?? 25
@@ -285,15 +303,17 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(
                     properties: [
                         "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max suggestions (1-25)", default: 5),
+                        "limit": MCPSchema.integer("Max suggestions (1-25)", default: 10),
                         "types": MCPSchema.stringArray("Types to include in suggestions"),
                     ],
                     required: ["query"]
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let query = args?["query"]?.stringValue ?? ""
-                    let limit = args?["limit"]?.intValue ?? 5
+                    guard let query = args?["query"]?.stringValue else {
+                        throw AuxError.usageError(message: "Missing required argument: query")
+                    }
+                    let limit = args?["limit"]?.intValue ?? 10
                     let types: [String]? = args?["types"]?.arrayValue?.compactMap(\.stringValue)
                     let writer = CaptureOutputWriter()
                     try await SearchSuggestionsHandler.handle(

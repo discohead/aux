@@ -44,13 +44,11 @@ extension AuxToolRegistry {
                             values: ["developer", "user"]
                         )
                     ],
-                    required: ["type"]
+                    required: []
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                guard case let .string(tokenType) = args?["type"] else {
-                    throw AuxError.usageError(message: "Missing required argument: type")
-                }
+                let tokenType = args?["type"]?.stringValue ?? "developer"
                 let writer = CaptureOutputWriter()
                 try await AuthTokenHandler.handle(
                     services: services,

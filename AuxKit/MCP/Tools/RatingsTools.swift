@@ -18,8 +18,12 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let type = args?["type"]?.stringValue ?? ""
-                let id = args?["id"]?.stringValue ?? ""
+                guard let type = args?["type"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: type")
+                }
+                guard let id = args?["id"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: id")
+                }
                 let library = args?["library"]?.boolValue ?? false
                 let writer = CaptureOutputWriter()
                 try await RatingsGetHandler.handle(
@@ -47,9 +51,15 @@ extension AuxToolRegistry {
                     required: ["type", "id", "rating"]
                 )
             ) { services, args in
-                let type = args?["type"]?.stringValue ?? ""
-                let id = args?["id"]?.stringValue ?? ""
-                let rating = args?["rating"]?.intValue ?? 0
+                guard let type = args?["type"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: type")
+                }
+                guard let id = args?["id"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: id")
+                }
+                guard let rating = args?["rating"]?.intValue else {
+                    throw AuxError.usageError(message: "Missing required argument: rating")
+                }
                 let library = args?["library"]?.boolValue ?? false
                 let writer = CaptureOutputWriter()
                 try await RatingsSetHandler.handle(
@@ -78,8 +88,12 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true)
             ) { services, args in
-                let type = args?["type"]?.stringValue ?? ""
-                let id = args?["id"]?.stringValue ?? ""
+                guard let type = args?["type"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: type")
+                }
+                guard let id = args?["id"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: id")
+                }
                 let library = args?["library"]?.boolValue ?? false
                 let writer = CaptureOutputWriter()
                 try await RatingsDeleteHandler.handle(

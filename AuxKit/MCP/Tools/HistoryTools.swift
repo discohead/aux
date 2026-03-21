@@ -10,12 +10,12 @@ extension AuxToolRegistry {
                 description: "Get heavy rotation content (frequently played albums, playlists, stations)",
                 inputSchema: MCPSchema.object(
                     properties: [
-                        "limit": MCPSchema.integer("Max items to return", default: 10)
+                        "limit": MCPSchema.integer("Max items to return", default: 25)
                     ]
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 10
+                let limit = args?["limit"]?.intValue ?? 25
                 let writer = CaptureOutputWriter()
                 try await HeavyRotationHandler.handle(
                     services: services,
@@ -32,12 +32,12 @@ extension AuxToolRegistry {
                 description: "Get recently played radio stations",
                 inputSchema: MCPSchema.object(
                     properties: [
-                        "limit": MCPSchema.integer("Max stations to return", default: 10)
+                        "limit": MCPSchema.integer("Max stations to return", default: 25)
                     ]
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 10
+                let limit = args?["limit"]?.intValue ?? 25
                 let writer = CaptureOutputWriter()
                 try await RecentlyPlayedStationsHandler.handle(
                     services: services,
@@ -54,12 +54,12 @@ extension AuxToolRegistry {
                 description: "Get recently added resources to the library",
                 inputSchema: MCPSchema.object(
                     properties: [
-                        "limit": MCPSchema.integer("Max items to return", default: 10)
+                        "limit": MCPSchema.integer("Max items to return", default: 25)
                     ]
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 10
+                let limit = args?["limit"]?.intValue ?? 25
                 let writer = CaptureOutputWriter()
                 try await RecentlyAddedHandler.handle(
                     services: services,

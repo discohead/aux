@@ -128,7 +128,9 @@ extension AuxToolRegistry {
                     required: ["position"]
                 )
             ) { services, args in
-                let position = args?["position"]?.doubleValue ?? 0.0
+                guard let position = args?["position"].flatMap({ Double($0) }) else {
+                    throw AuxError.usageError(message: "Missing required argument: position")
+                }
                 let writer = CaptureOutputWriter()
                 try await SeekHandler.handle(
                     services: services,
@@ -150,7 +152,9 @@ extension AuxToolRegistry {
                     required: ["level"]
                 )
             ) { services, args in
-                let level = args?["level"]?.doubleValue ?? 50.0
+                guard let level = args?["level"].flatMap({ Double($0) }) else {
+                    throw AuxError.usageError(message: "Missing required argument: level")
+                }
                 let writer = CaptureOutputWriter()
                 try await VolumeHandler.handle(
                     services: services,
@@ -172,7 +176,9 @@ extension AuxToolRegistry {
                     required: ["enabled"]
                 )
             ) { services, args in
-                let enabled = args?["enabled"]?.boolValue ?? false
+                guard let enabled = args?["enabled"]?.boolValue else {
+                    throw AuxError.usageError(message: "Missing required argument: enabled")
+                }
                 let writer = CaptureOutputWriter()
                 try await ShuffleHandler.handle(
                     services: services,
@@ -194,7 +200,9 @@ extension AuxToolRegistry {
                     required: ["mode"]
                 )
             ) { services, args in
-                let mode = args?["mode"]?.stringValue ?? "off"
+                guard let mode = args?["mode"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: mode")
+                }
                 let writer = CaptureOutputWriter()
                 try await RepeatHandler.handle(
                     services: services,
@@ -322,7 +330,9 @@ extension AuxToolRegistry {
                     required: ["name"]
                 )
             ) { services, args in
-                let name = args?["name"]?.stringValue ?? ""
+                guard let name = args?["name"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: name")
+                }
                 let writer = CaptureOutputWriter()
                 try await AirPlaySelectHandler.handle(
                     services: services,
@@ -392,7 +402,9 @@ extension AuxToolRegistry {
                     required: ["preset"]
                 )
             ) { services, args in
-                let preset = args?["preset"]?.stringValue ?? ""
+                guard let preset = args?["preset"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: preset")
+                }
                 let writer = CaptureOutputWriter()
                 try await EQSetHandler.handle(
                     services: services,

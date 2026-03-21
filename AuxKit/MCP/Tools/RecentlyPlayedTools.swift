@@ -10,12 +10,12 @@ extension AuxToolRegistry {
                 description: "Get recently played tracks from Apple Music",
                 inputSchema: MCPSchema.object(
                     properties: [
-                        "limit": MCPSchema.integer("Max tracks to return", default: 10)
+                        "limit": MCPSchema.integer("Max tracks to return", default: 25)
                     ]
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 10
+                let limit = args?["limit"]?.intValue ?? 25
                 let writer = CaptureOutputWriter()
                 try await RecentlyPlayedTracksHandler.handle(
                     services: services,
@@ -32,12 +32,12 @@ extension AuxToolRegistry {
                 description: "Get recently played containers (albums, playlists, stations) from Apple Music",
                 inputSchema: MCPSchema.object(
                     properties: [
-                        "limit": MCPSchema.integer("Max containers to return", default: 10)
+                        "limit": MCPSchema.integer("Max containers to return", default: 25)
                     ]
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 10
+                let limit = args?["limit"]?.intValue ?? 25
                 let writer = CaptureOutputWriter()
                 try await RecentlyPlayedContainersHandler.handle(
                     services: services,

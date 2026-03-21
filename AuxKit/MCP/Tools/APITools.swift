@@ -17,7 +17,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let path = args?["path"]?.stringValue ?? ""
+                guard let path = args?["path"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: path")
+                }
                 var queryParams: [String: String]?
                 if let paramsObj = args?["query_params"]?.objectValue {
                     queryParams = [:]
@@ -48,7 +50,9 @@ extension AuxToolRegistry {
                     required: ["path"]
                 )
             ) { services, args in
-                let path = args?["path"]?.stringValue ?? ""
+                guard let path = args?["path"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: path")
+                }
                 let body = args?["body"]?.stringValue
                 let writer = CaptureOutputWriter()
                 try await APIPostHandler.handle(
@@ -73,7 +77,9 @@ extension AuxToolRegistry {
                     required: ["path"]
                 )
             ) { services, args in
-                let path = args?["path"]?.stringValue ?? ""
+                guard let path = args?["path"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: path")
+                }
                 let body = args?["body"]?.stringValue
                 let writer = CaptureOutputWriter()
                 try await APIPutHandler.handle(
@@ -98,7 +104,9 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true)
             ) { services, args in
-                let path = args?["path"]?.stringValue ?? ""
+                guard let path = args?["path"]?.stringValue else {
+                    throw AuxError.usageError(message: "Missing required argument: path")
+                }
                 let writer = CaptureOutputWriter()
                 try await APIDeleteHandler.handle(
                     services: services,

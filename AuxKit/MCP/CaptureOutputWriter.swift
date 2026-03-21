@@ -22,14 +22,16 @@ public final class CaptureOutputWriter: OutputWriterProtocol, @unchecked Sendabl
     }
 
     public func write<T: Encodable & Sendable>(_ envelope: OutputEnvelope<T>) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        _capturedData = try encoder.encode(envelope)
+        try encodeAndStore(envelope)
     }
 
     public func writeError(_ error: CLIErrorResponse) throws {
+        try encodeAndStore(error)
+    }
+
+    private func encodeAndStore<T: Encodable>(_ value: T) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        _capturedData = try encoder.encode(error)
+        _capturedData = try encoder.encode(value)
     }
 }

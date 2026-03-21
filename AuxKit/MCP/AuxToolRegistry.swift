@@ -22,6 +22,11 @@ public struct AuxToolRegistry: Sendable {
             + Self.summariesTools()
 
         self.tools = allTools
+        let grouped = Dictionary(grouping: allTools, by: { $0.name })
+        let duplicates = grouped.filter { $0.value.count > 1 }.keys.sorted()
+        if !duplicates.isEmpty {
+            preconditionFailure("AuxToolRegistry contains duplicate tool names: \(duplicates.joined(separator: ", "))")
+        }
         self.toolsByName = Dictionary(uniqueKeysWithValues: allTools.map { ($0.name, $0) })
     }
 
