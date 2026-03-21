@@ -4,261 +4,39 @@ import MCP
 extension AuxToolRegistry {
     static func searchTools() -> [AuxToolDefinition] {
         [
-            // MARK: - aux_search_songs
-            AuxToolDefinition(
-                name: "aux_search_songs",
-                description: "Search for songs in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchSongsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_albums
-            AuxToolDefinition(
-                name: "aux_search_albums",
-                description: "Search for albums in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchAlbumsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_artists
-            AuxToolDefinition(
-                name: "aux_search_artists",
-                description: "Search for artists in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchArtistsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_playlists
-            AuxToolDefinition(
-                name: "aux_search_playlists",
-                description: "Search for playlists in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchPlaylistsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_music_videos
-            AuxToolDefinition(
-                name: "aux_search_music_videos",
-                description: "Search for music videos in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchMusicVideosHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_stations
-            AuxToolDefinition(
-                name: "aux_search_stations",
-                description: "Search for stations in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchStationsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_curators
-            AuxToolDefinition(
-                name: "aux_search_curators",
-                description: "Search for curators in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchCuratorsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_search_radio_shows
-            AuxToolDefinition(
-                name: "aux_search_radio_shows",
-                description: "Search for radio shows in the Apple Music catalog",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "query": MCPSchema.string("Search query"),
-                        "limit": MCPSchema.integer("Max results (1-25)", default: 25),
-                        "offset": MCPSchema.integer("Pagination offset", default: 0),
-                    ],
-                    required: ["query"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
-                    }
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchRadioShowsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
+            // MARK: - Standard search tools (query + limit + offset)
+            MCPToolFactory.searchTool(type: "songs", description: "Search for songs in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchSongsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "albums", description: "Search for albums in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchAlbumsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "artists", description: "Search for artists in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchArtistsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "playlists", description: "Search for playlists in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchPlaylistsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "music_videos", description: "Search for music videos in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchMusicVideosHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "stations", description: "Search for stations in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchStationsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "curators", description: "Search for curators in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchCuratorsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
+            MCPToolFactory.searchTool(type: "radio_shows", description: "Search for radio shows in the Apple Music catalog") {
+                services, options, query, limit, offset, writer in
+                try await SearchRadioShowsHandler.handle(services: services, options: options, query: query, limit: limit, offset: offset, writer: writer)
+            },
 
             // MARK: - aux_search_all
             AuxToolDefinition(
@@ -275,24 +53,17 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
+                    let query = try args.requireString("query")
+                    let types = args.optionalStringArray("types", default: ["songs", "albums", "artists", "playlists"])
+                    let limit = args.optionalInt("limit", default: 25)
+                    let offset = args.optionalInt("offset", default: 0)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await SearchAllHandler.handle(
+                            services: services, options: options,
+                            query: query, types: types, limit: limit, offset: offset,
+                            writer: writer
+                        )
                     }
-                    let types = args?["types"]?.arrayValue?.compactMap(\.stringValue)
-                        ?? ["songs", "albums", "artists", "playlists"]
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await SearchAllHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        types: types,
-                        limit: limit,
-                        offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -310,21 +81,16 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
+                    let query = try args.requireString("query")
+                    let limit = args.optionalInt("limit", default: 10)
+                    let types: [String]? = args?["types"]?.arrayValue?.compactMap { String($0, strict: false) }
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await SearchSuggestionsHandler.handle(
+                            services: services, options: options,
+                            query: query, limit: limit, types: types,
+                            writer: writer
+                        )
                     }
-                    let limit = args?["limit"]?.intValue ?? 10
-                    let types: [String]? = args?["types"]?.arrayValue?.compactMap(\.stringValue)
-                    let writer = CaptureOutputWriter()
-                    try await SearchSuggestionsHandler.handle(
-                        services: services,
-                        options: GlobalOptions(pretty: true),
-                        query: query,
-                        limit: limit,
-                        types: types,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
         ]

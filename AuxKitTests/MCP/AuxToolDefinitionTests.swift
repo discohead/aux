@@ -1,4 +1,5 @@
 import Testing
+import MCP
 @testable import AuxKit
 
 @Suite("AuxToolDefinition Tests")
@@ -17,6 +18,31 @@ struct AuxToolDefinitionTests {
         )
         #expect(tool.name == "aux_test_tool")
         #expect(tool.description == "A test tool")
+    }
+
+    @Test("toMCPTool passes annotations through")
+    func toMCPToolAnnotations() {
+        let tool = AuxToolDefinition(
+            name: "aux_test",
+            description: "Test",
+            inputSchema: MCPSchema.object(properties: [:]),
+            annotations: Tool.Annotations(readOnlyHint: true),
+            execute: { _, _ in "{}" }
+        )
+        let mcpTool = tool.toMCPTool()
+        #expect(mcpTool.annotations.readOnlyHint == true)
+    }
+
+    @Test("toMCPTool works with nil annotations")
+    func toMCPToolNilAnnotations() {
+        let tool = AuxToolDefinition(
+            name: "aux_test",
+            description: "Test",
+            inputSchema: MCPSchema.object(properties: [:]),
+            execute: { _, _ in "{}" }
+        )
+        let mcpTool = tool.toMCPTool()
+        #expect(mcpTool.name == "aux_test")
     }
 
     @Test("tool execution returns expected output")

@@ -15,21 +15,17 @@ extension AuxToolRegistry {
                     required: ["type", "id"]
                 )
             ) { services, args in
-                guard let type = args?["type"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: type")
+                let type = try args.requireString("type")
+                let id = try args.requireString("id")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await FavoritesAddHandler.handle(
+                        services: services,
+                        options: options,
+                        type: type,
+                        id: id,
+                        writer: writer
+                    )
                 }
-                guard let id = args?["id"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: id")
-                }
-                let writer = CaptureOutputWriter()
-                try await FavoritesAddHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    type: type,
-                    id: id,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
         ]
     }

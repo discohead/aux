@@ -39,4 +39,12 @@ struct RecommendationsToolsTests {
         let result = try await tool.execute(ServiceContainer.mock(), ["limit": .int(5)])
         #expect(result.contains("\"data\""))
     }
+
+    @Test("aux_recommendations_list succeeds with nil args")
+    func listNilArgs() async throws {
+        let tools = AuxToolRegistry.recommendationsTools()
+        let tool = try #require(tools.first { $0.name == "aux_recommendations_list" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
 }

@@ -79,4 +79,43 @@ struct CatalogToolsTests {
             #expect(required?.contains("id") == true, "Tool \(tool.name) should require id")
         }
     }
+
+    // MARK: - Argument Validation Tests
+
+    @Test("aux_catalog_song throws on missing required args")
+    func catalogSongMissingArgs() async {
+        let tools = AuxToolRegistry.catalogTools()
+        let tool = tools.first { $0.name == "aux_catalog_song" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_catalog_album throws on missing required args")
+    func catalogAlbumMissingArgs() async {
+        let tools = AuxToolRegistry.catalogTools()
+        let tool = tools.first { $0.name == "aux_catalog_album" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_catalog_charts succeeds with nil args")
+    func catalogChartsNilArgs() async throws {
+        let tools = AuxToolRegistry.catalogTools()
+        let tool = try #require(tools.first { $0.name == "aux_catalog_charts" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_catalog_charts accepts limit as double")
+    func catalogChartsLimitAsDouble() async throws {
+        let tools = AuxToolRegistry.catalogTools()
+        let tool = try #require(tools.first { $0.name == "aux_catalog_charts" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["limit": .double(10.0)]
+        )
+        #expect(result.contains("\"data\""))
+    }
 }

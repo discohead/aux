@@ -202,4 +202,82 @@ struct LibraryToolsTests {
         let required = schema?["required"]?.arrayValue?.compactMap(\.stringValue) ?? []
         #expect(required.contains("query"))
     }
+
+    // MARK: - Argument Validation Tests (compactMap Elimination Validation)
+
+    @Test("aux_library_search throws on missing required args")
+    func searchMissingArgs() async {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = tools.first { $0.name == "aux_library_search" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_library_get_tags throws on missing required args")
+    func getTagsMissingArgs() async {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = tools.first { $0.name == "aux_library_get_tags" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_library_get_tags accepts track_id as double")
+    func getTagsTrackIdAsDouble() async throws {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = try #require(tools.first { $0.name == "aux_library_get_tags" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["track_id": .double(42.0)]
+        )
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_library_set_tags throws on missing required args")
+    func setTagsMissingArgs() async {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = tools.first { $0.name == "aux_library_set_tags" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_library_add throws on missing required args")
+    func addMissingArgs() async {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = tools.first { $0.name == "aux_library_add" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_library_delete throws on missing required args")
+    func deleteMissingArgs() async {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = tools.first { $0.name == "aux_library_delete" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_library_delete accepts track_ids with double elements")
+    func deleteTrackIdsAsDoubles() async throws {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = try #require(tools.first { $0.name == "aux_library_delete" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["track_ids": .array([.double(1.0), .double(2.0), .double(3.0)])]
+        )
+        #expect(result.contains("\"data\"") || result.contains("delete") || result.contains("Delete"))
+    }
+
+    @Test("aux_library_create_playlist throws on missing required args")
+    func createPlaylistMissingArgs() async {
+        let tools = AuxToolRegistry.libraryTools()
+        let tool = tools.first { $0.name == "aux_library_create_playlist" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
 }

@@ -17,25 +17,22 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                guard let path = args?["path"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: path")
-                }
+                let path = try args.requireString("path")
                 var queryParams: [String: String]?
-                if let paramsObj = args?["query_params"]?.objectValue {
-                    queryParams = [:]
-                    for (key, value) in paramsObj {
-                        queryParams?[key] = value.stringValue ?? ""
+                if let obj = args?["query_params"]?.objectValue {
+                    queryParams = obj.reduce(into: [:]) { result, pair in
+                        if let s = String(pair.value, strict: false) { result[pair.key] = s }
                     }
                 }
-                let writer = CaptureOutputWriter()
-                try await APIGetHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    path: path,
-                    queryParams: queryParams,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await APIGetHandler.handle(
+                        services: services,
+                        options: options,
+                        path: path,
+                        queryParams: queryParams,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_api_post
@@ -50,19 +47,17 @@ extension AuxToolRegistry {
                     required: ["path"]
                 )
             ) { services, args in
-                guard let path = args?["path"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: path")
+                let path = try args.requireString("path")
+                let body = args.optionalString("body")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await APIPostHandler.handle(
+                        services: services,
+                        options: options,
+                        path: path,
+                        body: body,
+                        writer: writer
+                    )
                 }
-                let body = args?["body"]?.stringValue
-                let writer = CaptureOutputWriter()
-                try await APIPostHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    path: path,
-                    body: body,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_api_put
@@ -77,19 +72,17 @@ extension AuxToolRegistry {
                     required: ["path"]
                 )
             ) { services, args in
-                guard let path = args?["path"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: path")
+                let path = try args.requireString("path")
+                let body = args.optionalString("body")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await APIPutHandler.handle(
+                        services: services,
+                        options: options,
+                        path: path,
+                        body: body,
+                        writer: writer
+                    )
                 }
-                let body = args?["body"]?.stringValue
-                let writer = CaptureOutputWriter()
-                try await APIPutHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    path: path,
-                    body: body,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_api_delete
@@ -104,17 +97,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true)
             ) { services, args in
-                guard let path = args?["path"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: path")
+                let path = try args.requireString("path")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await APIDeleteHandler.handle(
+                        services: services,
+                        options: options,
+                        path: path,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await APIDeleteHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    path: path,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
         ]
     }

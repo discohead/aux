@@ -37,4 +37,13 @@ struct FavoritesToolsTests {
         )
         #expect(result.contains("\"data\""))
     }
+
+    @Test("aux_favorites_add throws on missing required args")
+    func addMissingArgs() async {
+        let tools = AuxToolRegistry.favoritesTools()
+        let tool = tools.first { $0.name == "aux_favorites_add" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
 }

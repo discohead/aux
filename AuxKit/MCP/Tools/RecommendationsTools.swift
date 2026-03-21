@@ -14,15 +14,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 10
-                let writer = CaptureOutputWriter()
-                try await RecommendationsHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    limit: limit,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let limit = args.optionalInt("limit", default: 10)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RecommendationsHandler.handle(
+                        services: services,
+                        options: options,
+                        limit: limit,
+                        writer: writer
+                    )
+                }
             },
         ]
     }

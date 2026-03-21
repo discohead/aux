@@ -17,16 +17,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
+                    let id = try args.requireString("id")
+                    let include = args?["include"]?.arrayValue?.compactMap { String($0, strict: false) }
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogSongHandler.handle(
+                            services: services, options: options,
+                            id: id, include: include, writer: writer
+                        )
                     }
-                    let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogSongHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, include: include, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -42,15 +40,13 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let isrc = args?["isrc"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: isrc")
+                    let isrc = try args.requireString("isrc")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogSongByISRCHandler.handle(
+                            services: services, options: options,
+                            isrc: isrc, writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogSongByISRCHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        isrc: isrc, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -67,16 +63,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
+                    let id = try args.requireString("id")
+                    let include = args?["include"]?.arrayValue?.compactMap { String($0, strict: false) }
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogAlbumHandler.handle(
+                            services: services, options: options,
+                            id: id, include: include, writer: writer
+                        )
                     }
-                    let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogAlbumHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, include: include, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -92,15 +86,13 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let upc = args?["upc"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: upc")
+                    let upc = try args.requireString("upc")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogAlbumByUPCHandler.handle(
+                            services: services, options: options,
+                            upc: upc, writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogAlbumByUPCHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        upc: upc, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -117,16 +109,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
+                    let id = try args.requireString("id")
+                    let include = args?["include"]?.arrayValue?.compactMap { String($0, strict: false) }
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogArtistHandler.handle(
+                            services: services, options: options,
+                            id: id, include: include, writer: writer
+                        )
                     }
-                    let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogArtistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, include: include, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -143,138 +133,38 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
+                    let id = try args.requireString("id")
+                    let include = args?["include"]?.arrayValue?.compactMap { String($0, strict: false) }
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogPlaylistHandler.handle(
+                            services: services, options: options,
+                            id: id, include: include, writer: writer
+                        )
                     }
-                    let include: [String]? = args?["include"]?.arrayValue?.compactMap { $0.stringValue }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogPlaylistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, include: include, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
-            // MARK: - aux_catalog_music_video
-            AuxToolDefinition(
-                name: "aux_catalog_music_video",
-                description: "Get a music video from the Apple Music catalog by ID",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "id": MCPSchema.string("Apple Music catalog music video ID"),
-                    ],
-                    required: ["id"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogMusicVideoHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_catalog_station
-            AuxToolDefinition(
-                name: "aux_catalog_station",
-                description: "Get a station from the Apple Music catalog by ID",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "id": MCPSchema.string("Apple Music catalog station ID"),
-                    ],
-                    required: ["id"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogStationHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_catalog_curator
-            AuxToolDefinition(
-                name: "aux_catalog_curator",
-                description: "Get a curator from the Apple Music catalog by ID",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "id": MCPSchema.string("Apple Music catalog curator ID"),
-                    ],
-                    required: ["id"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogCuratorHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_catalog_radio_show
-            AuxToolDefinition(
-                name: "aux_catalog_radio_show",
-                description: "Get a radio show from the Apple Music catalog by ID",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "id": MCPSchema.string("Apple Music catalog radio show ID"),
-                    ],
-                    required: ["id"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogRadioShowHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
-
-            // MARK: - aux_catalog_genre
-            AuxToolDefinition(
-                name: "aux_catalog_genre",
-                description: "Get a genre from the Apple Music catalog by ID",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "id": MCPSchema.string("Apple Music catalog genre ID"),
-                    ],
-                    required: ["id"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogGenreHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
+            // MARK: - Simple catalog lookups by ID
+            MCPToolFactory.catalogGetById(type: "music_video", description: "Get a music video from the Apple Music catalog by ID") {
+                services, options, id, writer in
+                try await CatalogMusicVideoHandler.handle(services: services, options: options, id: id, writer: writer)
+            },
+            MCPToolFactory.catalogGetById(type: "station", description: "Get a station from the Apple Music catalog by ID") {
+                services, options, id, writer in
+                try await CatalogStationHandler.handle(services: services, options: options, id: id, writer: writer)
+            },
+            MCPToolFactory.catalogGetById(type: "curator", description: "Get a curator from the Apple Music catalog by ID") {
+                services, options, id, writer in
+                try await CatalogCuratorHandler.handle(services: services, options: options, id: id, writer: writer)
+            },
+            MCPToolFactory.catalogGetById(type: "radio_show", description: "Get a radio show from the Apple Music catalog by ID") {
+                services, options, id, writer in
+                try await CatalogRadioShowHandler.handle(services: services, options: options, id: id, writer: writer)
+            },
+            MCPToolFactory.catalogGetById(type: "genre", description: "Get a genre from the Apple Music catalog by ID") {
+                services, options, id, writer in
+                try await CatalogGenreHandler.handle(services: services, options: options, id: id, writer: writer)
+            },
 
             // MARK: - aux_catalog_all_genres
             AuxToolDefinition(
@@ -286,38 +176,19 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let writer = CaptureOutputWriter()
-                    try await CatalogAllGenresHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogAllGenresHandler.handle(
+                            services: services, options: options,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
-            // MARK: - aux_catalog_record_label
-            AuxToolDefinition(
-                name: "aux_catalog_record_label",
-                description: "Get a record label from the Apple Music catalog by ID",
-                inputSchema: MCPSchema.object(
-                    properties: [
-                        "id": MCPSchema.string("Apple Music catalog record label ID"),
-                    ],
-                    required: ["id"]
-                ),
-                annotations: Tool.Annotations(readOnlyHint: true),
-                execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogRecordLabelHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
-                }
-            ),
+            MCPToolFactory.catalogGetById(type: "record_label", description: "Get a record label from the Apple Music catalog by ID") {
+                services, options, id, writer in
+                try await CatalogRecordLabelHandler.handle(services: services, options: options, id: id, writer: writer)
+            },
 
             // MARK: - aux_catalog_charts
             AuxToolDefinition(
@@ -334,16 +205,16 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let kinds = args?["kinds"]?.arrayValue?.compactMap { $0.stringValue } ?? []
-                    let types = args?["types"]?.arrayValue?.compactMap { $0.stringValue } ?? []
-                    let genreId = args?["genre_id"]?.stringValue
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let writer = CaptureOutputWriter()
-                    try await CatalogChartsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        kinds: kinds, types: types, genreId: genreId, limit: limit, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let kinds = args.optionalStringArray("kinds", default: [])
+                    let types = args.optionalStringArray("types", default: [])
+                    let genreId = args.optionalString("genre_id")
+                    let limit = args.optionalInt("limit", default: 25)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogChartsHandler.handle(
+                            services: services, options: options,
+                            kinds: kinds, types: types, genreId: genreId, limit: limit, writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -359,15 +230,13 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
+                    let id = try args.requireString("id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogStorefrontHandler.handle(
+                            services: services, options: options,
+                            id: id, writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await CatalogStorefrontHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        id: id, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -383,13 +252,13 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let storefront = args?["storefront"]?.stringValue ?? "us"
-                    let writer = CaptureOutputWriter()
-                    try await CatalogPersonalStationHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        storefront: storefront, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let storefront = args.optionalString("storefront") ?? "us"
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogPersonalStationHandler.handle(
+                            services: services, options: options,
+                            storefront: storefront, writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -406,14 +275,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let storefront = args?["storefront"]?.stringValue ?? "us"
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let writer = CaptureOutputWriter()
-                    try await CatalogLiveStationsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        storefront: storefront, limit: limit, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let storefront = args.optionalString("storefront") ?? "us"
+                    let limit = args.optionalInt("limit", default: 25)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogLiveStationsHandler.handle(
+                            services: services, options: options,
+                            storefront: storefront, limit: limit, writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -429,13 +298,13 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let storefront = args?["storefront"]?.stringValue ?? "us"
-                    let writer = CaptureOutputWriter()
-                    try await CatalogStationGenresHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        storefront: storefront, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let storefront = args.optionalString("storefront") ?? "us"
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogStationGenresHandler.handle(
+                            services: services, options: options,
+                            storefront: storefront, writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -453,17 +322,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let genreId = args?["genre_id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: genre_id")
+                    let genreId = try args.requireString("genre_id")
+                    let storefront = args.optionalString("storefront") ?? "us"
+                    let limit = args.optionalInt("limit", default: 25)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogStationsForGenreHandler.handle(
+                            services: services, options: options,
+                            storefront: storefront, genreId: genreId, limit: limit, writer: writer
+                        )
                     }
-                    let storefront = args?["storefront"]?.stringValue ?? "us"
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let writer = CaptureOutputWriter()
-                    try await CatalogStationsForGenreHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        storefront: storefront, genreId: genreId, limit: limit, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -481,19 +348,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let id = args?["id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: id")
+                    let id = try args.requireString("id")
+                    let storefront = try args.requireString("target_storefront")
+                    let type = args.optionalString("type") ?? "songs"
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await CatalogEquivalentHandler.handle(
+                            services: services, options: options,
+                            type: type, id: id, storefront: storefront, writer: writer
+                        )
                     }
-                    guard let storefront = args?["target_storefront"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: target_storefront")
-                    }
-                    let type = args?["type"]?.stringValue ?? "songs"
-                    let writer = CaptureOutputWriter()
-                    try await CatalogEquivalentHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        type: type, id: id, storefront: storefront, writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
         ]

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import MCP
 @testable import AuxKit
@@ -44,6 +45,71 @@ struct AuxMCPServerIntegrationTests {
         // 5. Call unknown tool — should return isError == true
         let unknownResult = try await client.callTool(name: "aux_totally_fake_tool")
         #expect(unknownResult.isError == true, "Unknown tool should return isError")
+
+        await server.stop()
+    }
+
+    @Test("handler AuxError produces isError with structured JSON")
+    func handlerAuxErrorPropagation() async throws {
+        let tool = AuxToolDefinition(
+            name: "aux_test_fail",
+            description: "Always fails",
+            inputSchema: MCPSchema.object(properties: [:]),
+            execute: { _, _ in
+                throw AuxError.notFound(message: "Track not found")
+            }
+        )
+        let registry = AuxToolRegistry(tools: [tool])
+        let server = AuxMCPServer(services: ServiceContainer.mock(), registry: registry)
+
+        let (clientTransport, serverTransport) = await InMemoryTransport.createConnectedPair()
+        try await server.start(transport: serverTransport)
+
+        let client = Client(name: "test-client", version: "1.0.0")
+        _ = try await client.connect(transport: clientTransport)
+
+        let result = try await client.callTool(name: "aux_test_fail")
+        #expect(result.isError == true)
+        if case .text(let text) = result.content.first {
+            #expect(text.contains("not_found"))
+            #expect(text.contains("Track not found"))
+        } else {
+            Issue.record("Expected text content in error response")
+        }
+
+        await server.stop()
+    }
+
+    @Test("generic Error produces isError with internal code")
+    func genericErrorPropagation() async throws {
+        struct CustomError: Error, LocalizedError {
+            var errorDescription: String? { "Something unexpected" }
+        }
+        let tool = AuxToolDefinition(
+            name: "aux_test_generic_fail",
+            description: "Fails with generic error",
+            inputSchema: MCPSchema.object(properties: [:]),
+            execute: { _, _ in
+                throw CustomError()
+            }
+        )
+        let registry = AuxToolRegistry(tools: [tool])
+        let server = AuxMCPServer(services: ServiceContainer.mock(), registry: registry)
+
+        let (clientTransport, serverTransport) = await InMemoryTransport.createConnectedPair()
+        try await server.start(transport: serverTransport)
+
+        let client = Client(name: "test-client", version: "1.0.0")
+        _ = try await client.connect(transport: clientTransport)
+
+        let result = try await client.callTool(name: "aux_test_generic_fail")
+        #expect(result.isError == true)
+        if case .text(let text) = result.content.first {
+            #expect(text.contains("internal"))
+            #expect(text.contains("Something unexpected"))
+        } else {
+            Issue.record("Expected text content in error response")
+        }
 
         await server.stop()
     }

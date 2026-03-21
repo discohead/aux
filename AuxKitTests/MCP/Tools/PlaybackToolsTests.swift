@@ -161,4 +161,75 @@ struct PlaybackToolsTests {
             #expect(!isReadOnly, "\(tool.name) should not be read-only")
         }
     }
+
+    // MARK: - Argument Validation Tests (Bug-Fix Validation)
+
+    @Test("aux_playback_fast_forward succeeds with int seconds")
+    func fastForwardWithInt() async throws {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = try #require(tools.first { $0.name == "aux_playback_fast_forward" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["seconds": .int(30)]
+        )
+        #expect(result.contains("Fast forward") || result.contains("\"data\""))
+    }
+
+    @Test("aux_playback_rewind succeeds with int seconds")
+    func rewindWithInt() async throws {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = try #require(tools.first { $0.name == "aux_playback_rewind" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["seconds": .int(10)]
+        )
+        #expect(result.contains("Rewind") || result.contains("\"data\""))
+    }
+
+    @Test("aux_playback_seek throws on missing required args")
+    func seekMissingArgs() async {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = tools.first { $0.name == "aux_playback_seek" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_playback_seek accepts position as int")
+    func seekPositionAsInt() async throws {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = try #require(tools.first { $0.name == "aux_playback_seek" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["position": .int(120)]
+        )
+        #expect(result.contains("Seek") || result.contains("\"data\""))
+    }
+
+    @Test("aux_playback_volume throws on missing required args")
+    func volumeMissingArgs() async {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = tools.first { $0.name == "aux_playback_volume" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_playback_shuffle throws on missing required args")
+    func shuffleMissingArgs() async {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = tools.first { $0.name == "aux_playback_shuffle" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_playback_repeat throws on missing required args")
+    func repeatMissingArgs() async {
+        let tools = AuxToolRegistry.playbackTools()
+        let tool = tools.first { $0.name == "aux_playback_repeat" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
 }

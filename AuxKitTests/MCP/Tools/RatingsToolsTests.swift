@@ -84,4 +84,44 @@ struct RatingsToolsTests {
         )
         #expect(result.contains("\"data\""))
     }
+
+    // MARK: - Argument Validation Tests
+
+    @Test("aux_ratings_get throws on missing required args")
+    func getRatingsMissingArgs() async {
+        let tools = AuxToolRegistry.ratingsTools()
+        let tool = tools.first { $0.name == "aux_ratings_get" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_ratings_set throws on missing required args")
+    func setRatingsMissingArgs() async {
+        let tools = AuxToolRegistry.ratingsTools()
+        let tool = tools.first { $0.name == "aux_ratings_set" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_ratings_set accepts rating as double")
+    func setRatingsRatingAsDouble() async throws {
+        let tools = AuxToolRegistry.ratingsTools()
+        let tool = tools.first { $0.name == "aux_ratings_set" }!
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["type": .string("songs"), "id": .string("123"), "rating": .double(1.0)]
+        )
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_ratings_delete throws on missing required args")
+    func deleteRatingsMissingArgs() async {
+        let tools = AuxToolRegistry.ratingsTools()
+        let tool = tools.first { $0.name == "aux_ratings_delete" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
 }

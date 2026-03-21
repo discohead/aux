@@ -63,4 +63,20 @@ struct AuthToolsTests {
         let result = try await tool.execute(ServiceContainer.mock(), ["type": .string("developer")])
         #expect(result.contains("\"data\""))
     }
+
+    @Test("aux_auth_status succeeds with nil args")
+    func authStatusNilArgs() async throws {
+        let tools = AuxToolRegistry.authTools()
+        let tool = try #require(tools.first { $0.name == "aux_auth_status" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_auth_request succeeds with nil args")
+    func authRequestNilArgs() async throws {
+        let tools = AuxToolRegistry.authTools()
+        let tool = try #require(tools.first { $0.name == "aux_auth_request" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
 }

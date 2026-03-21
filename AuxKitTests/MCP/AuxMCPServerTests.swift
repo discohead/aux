@@ -87,4 +87,28 @@ struct AuxMCPServerTests {
         // Stop and verify no crash
         await server.stop()
     }
+
+    @Test("stop is safe to call on a fresh server")
+    func stopWithoutStart() async {
+        let services = ServiceContainer.mock()
+        let server = AuxMCPServer(services: services)
+        // Should not crash
+        await server.stop()
+    }
+
+    @Test("server with custom registry starts and stops cleanly")
+    func serverWithCustomRegistry() async throws {
+        let tool = AuxToolDefinition(
+            name: "aux_test_noop",
+            description: "No-op",
+            inputSchema: MCPSchema.object(properties: [:]),
+            execute: { _, _ in "{\"data\":{}}" }
+        )
+        let registry = AuxToolRegistry(tools: [tool])
+        let server = AuxMCPServer(services: ServiceContainer.mock(), registry: registry)
+
+        let (_, serverTransport) = await InMemoryTransport.createConnectedPair()
+        try await server.start(transport: serverTransport)
+        await server.stop()
+    }
 }

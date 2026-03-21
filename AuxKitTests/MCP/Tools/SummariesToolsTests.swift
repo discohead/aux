@@ -45,4 +45,12 @@ struct SummariesToolsTests {
         )
         #expect(result.contains("\"data\""))
     }
+
+    @Test("aux_summaries_get succeeds with nil args")
+    func getNilArgs() async throws {
+        let tools = AuxToolRegistry.summariesTools()
+        let tool = try #require(tools.first { $0.name == "aux_summaries_get" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
 }

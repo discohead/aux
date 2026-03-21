@@ -49,4 +49,23 @@ struct RecentlyPlayedToolsTests {
         let result = try await tool.execute(ServiceContainer.mock(), nil)
         #expect(result.contains("\"data\""))
     }
+
+    @Test("aux_recently_played_tracks succeeds with nil args")
+    func tracksNilArgs() async throws {
+        let tools = AuxToolRegistry.recentlyPlayedTools()
+        let tool = try #require(tools.first { $0.name == "aux_recently_played_tracks" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_recently_played_tracks accepts limit as double")
+    func tracksLimitAsDouble() async throws {
+        let tools = AuxToolRegistry.recentlyPlayedTools()
+        let tool = try #require(tools.first { $0.name == "aux_recently_played_tracks" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["limit": .double(10.0)]
+        )
+        #expect(result.contains("\"data\""))
+    }
 }

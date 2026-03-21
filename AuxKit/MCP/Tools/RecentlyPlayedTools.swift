@@ -15,15 +15,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 25
-                let writer = CaptureOutputWriter()
-                try await RecentlyPlayedTracksHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    limit: limit,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let limit = args.optionalInt("limit", default: 25)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RecentlyPlayedTracksHandler.handle(
+                        services: services,
+                        options: options,
+                        limit: limit,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_recently_played_containers
@@ -37,15 +37,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let limit = args?["limit"]?.intValue ?? 25
-                let writer = CaptureOutputWriter()
-                try await RecentlyPlayedContainersHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    limit: limit,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let limit = args.optionalInt("limit", default: 25)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RecentlyPlayedContainersHandler.handle(
+                        services: services,
+                        options: options,
+                        limit: limit,
+                        writer: writer
+                    )
+                }
             },
         ]
     }

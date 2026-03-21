@@ -84,4 +84,53 @@ struct APIToolsTests {
         )
         #expect(result.contains("\"data\""))
     }
+
+    // MARK: - Argument Validation Tests
+
+    @Test("aux_api_get throws on missing required args")
+    func getApiMissingArgs() async {
+        let tools = AuxToolRegistry.apiTools()
+        let tool = tools.first { $0.name == "aux_api_get" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_api_post throws on missing required args")
+    func postApiMissingArgs() async {
+        let tools = AuxToolRegistry.apiTools()
+        let tool = tools.first { $0.name == "aux_api_post" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_api_put throws on missing required args")
+    func putApiMissingArgs() async {
+        let tools = AuxToolRegistry.apiTools()
+        let tool = tools.first { $0.name == "aux_api_put" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_api_put executes with mock")
+    func putExecution() async throws {
+        let tools = AuxToolRegistry.apiTools()
+        let tool = try #require(tools.first { $0.name == "aux_api_put" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["path": .string("/v1/me/library"), "body": .string("{}")]
+        )
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_api_delete throws on missing required args")
+    func deleteApiMissingArgs() async {
+        let tools = AuxToolRegistry.apiTools()
+        let tool = tools.first { $0.name == "aux_api_delete" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
 }

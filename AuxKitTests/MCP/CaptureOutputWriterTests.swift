@@ -39,16 +39,63 @@ struct CaptureOutputWriterTests {
         #expect(writer.capturedString == nil)
     }
 
-    @Test("last write wins")
-    func lastWriteWins() throws {
+    // MARK: - capture() static helper
+
+    @Test("capture returns JSON string on successful handler")
+    func captureSuccess() async throws {
+        let result = try await CaptureOutputWriter.capture(
+            services: ServiceContainer.mock()
+        ) { _, _, writer in
+            let envelope = OutputEnvelope(data: ["status": "ok"])
+            try writer.write(envelope)
+        }
+        #expect(result.contains("\"data\""))
+        #expect(result.contains("ok"))
+    }
+
+    @Test("capture throws when handler writes nothing")
+    func captureThrowsOnNoOutput() async {
+        await #expect(throws: AuxError.self) {
+            _ = try await CaptureOutputWriter.capture(
+                services: ServiceContainer.mock()
+            ) { _, _, _ in
+                // Handler writes nothing
+            }
+        }
+    }
+
+    @Test("capture propagates handler error")
+    func capturePropagatesError() async {
+        await #expect(throws: AuxError.self) {
+            _ = try await CaptureOutputWriter.capture(
+                services: ServiceContainer.mock()
+            ) { _, _, _ in
+                throw AuxError.serviceError(message: "test error")
+            }
+        }
+    }
+
+    @Test("capture uses pretty GlobalOptions by default")
+    func captureUsesPrettyOptions() async throws {
+        var receivedOptions: GlobalOptions?
+        _ = try await CaptureOutputWriter.capture(
+            services: ServiceContainer.mock()
+        ) { _, options, writer in
+            receivedOptions = options
+            let envelope = OutputEnvelope(data: ["ok": true])
+            try writer.write(envelope)
+        }
+        #expect(receivedOptions?.pretty == true)
+    }
+
+    @Test("output uses pretty-printed sorted-keys formatting")
+    func outputIsPrettyPrinted() throws {
         let writer = CaptureOutputWriter()
-        let envelope = OutputEnvelope(data: ["status": "authorized"])
+        let envelope = OutputEnvelope(data: ["a": 1, "b": 2])
         try writer.write(envelope)
 
-        let error = CLIErrorResponse(code: "overwrite", message: "Second write")
-        try writer.writeError(error)
-
         let captured = try #require(writer.capturedString)
-        #expect(captured.contains("overwrite"))
+        // Pretty-printed JSON has newlines
+        #expect(captured.contains("\n"))
     }
 }

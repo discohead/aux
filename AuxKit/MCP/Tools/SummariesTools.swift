@@ -15,17 +15,17 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let year = args?["year"]?.stringValue ?? "latest"
-                let views = args?["views"]?.arrayValue?.compactMap(\.stringValue) ?? ["all"]
-                let writer = CaptureOutputWriter()
-                try await SummariesGetHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    year: year,
-                    views: views,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let year = args.optionalString("year") ?? "latest"
+                let views = args.optionalStringArray("views", default: ["all"])
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await SummariesGetHandler.handle(
+                        services: services,
+                        options: options,
+                        year: year,
+                        views: views,
+                        writer: writer
+                    )
+                }
             },
         ]
     }

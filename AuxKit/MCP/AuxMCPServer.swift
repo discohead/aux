@@ -9,14 +9,16 @@ import Foundation
 import MCP
 
 /// MCP server that exposes all AuxKit functionality as MCP tools.
+/// Uses a ToolRegistryProtocol for tool discovery and dispatch. Errors from tool
+/// execution are serialized as JSON CLIErrorResponse objects with `isError: true`.
 public final class AuxMCPServer: Sendable {
     private let server: Server
     private let services: ServiceContainer
-    private let registry: AuxToolRegistry
+    private let registry: any ToolRegistryProtocol
 
-    public init(services: ServiceContainer) {
+    public init(services: ServiceContainer, registry: any ToolRegistryProtocol = AuxToolRegistry()) {
         self.services = services
-        self.registry = AuxToolRegistry()
+        self.registry = registry
         self.server = Server(
             name: "aux",
             version: Aux.version,
@@ -32,7 +34,20 @@ public final class AuxMCPServer: Sendable {
         }
 
         await server.withMethodHandler(CallTool.self) { [registry, services] params in
-            func makeErrorResult(_ error: Error) -> CallTool.Result {
+            guard let toolDef = registry.tool(named: params.name) else {
+                let errorResponse = CLIErrorResponse(
+                    code: "unknown_tool",
+                    message: "Unknown tool: \(params.name)"
+                )
+                return CallTool.Result(
+                    content: [.text(Self.formatErrorJSON(errorResponse, fallbackMessage: "Unknown tool"))],
+                    isError: true
+                )
+            }
+            do {
+                let json = try await toolDef.execute(services, params.arguments)
+                return CallTool.Result(content: [.text(json)], isError: false)
+            } catch {
                 let errorResponse: CLIErrorResponse
                 if let auxError = error as? AuxError {
                     errorResponse = auxError.toCLIErrorResponse()
@@ -42,39 +57,10 @@ public final class AuxMCPServer: Sendable {
                         message: error.localizedDescription
                     )
                 }
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let errorString: String
-                if let data = try? encoder.encode(errorResponse),
-                   let json = String(data: data, encoding: .utf8) {
-                    errorString = json
-                } else {
-                    errorString = #"{"error":{"code":"internal","message":"An unknown error occurred"}}"#
-                }
-                return CallTool.Result(content: [.text(errorString)], isError: true)
-            }
-
-            guard let toolDef = registry.tool(named: params.name) else {
-                let errorResponse = CLIErrorResponse(
-                    code: "unknown_tool",
-                    message: "Unknown tool: \(params.name)"
+                return CallTool.Result(
+                    content: [.text(Self.formatErrorJSON(errorResponse, fallbackMessage: error.localizedDescription))],
+                    isError: true
                 )
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let errorString: String
-                if let data = try? encoder.encode(errorResponse),
-                   let json = String(data: data, encoding: .utf8) {
-                    errorString = json
-                } else {
-                    errorString = #"{"error":{"code":"unknown_tool","message":"Unknown tool"}}"#
-                }
-                return CallTool.Result(content: [.text(errorString)], isError: true)
-            }
-            do {
-                let json = try await toolDef.execute(services, params.arguments)
-                return CallTool.Result(content: [.text(json)], isError: false)
-            } catch {
-                return makeErrorResult(error)
             }
         }
 
@@ -89,5 +75,21 @@ public final class AuxMCPServer: Sendable {
     /// Stop the server and disconnect the transport.
     public func stop() async {
         await server.stop()
+    }
+
+    // MARK: - Private
+
+    /// Encode a CLIErrorResponse to JSON, with a fallback that preserves the original error message.
+    private static func formatErrorJSON(_ response: CLIErrorResponse, fallbackMessage: String) -> String {
+        let encoder = JSONEncoder.aux
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(response),
+           let json = String(data: data, encoding: .utf8) {
+            return json
+        }
+        let escaped = fallbackMessage
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return "{\"error\":{\"code\":\"internal\",\"message\":\"\(escaped)\"}}"
     }
 }

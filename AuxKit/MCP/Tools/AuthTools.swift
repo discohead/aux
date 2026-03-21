@@ -10,13 +10,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await AuthStatusHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AuthStatusHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             AuxToolDefinition(
@@ -24,13 +24,13 @@ extension AuxToolRegistry {
                 description: "Request Apple Music authorization from the user",
                 inputSchema: MCPSchema.object(properties: [:])
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await AuthRequestHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AuthRequestHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             AuxToolDefinition(
@@ -48,15 +48,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                let tokenType = args?["type"]?.stringValue ?? "developer"
-                let writer = CaptureOutputWriter()
-                try await AuthTokenHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    type: tokenType,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let tokenType = args.optionalString("type") ?? "developer"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AuthTokenHandler.handle(
+                        services: services,
+                        options: options,
+                        type: tokenType,
+                        writer: writer
+                    )
+                }
             },
         ]
     }

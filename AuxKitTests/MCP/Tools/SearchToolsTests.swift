@@ -62,4 +62,35 @@ struct SearchToolsTests {
         ]
         #expect(names == expected)
     }
+
+    // MARK: - Argument Validation Tests
+
+    @Test("aux_search_songs throws on missing required args")
+    func searchSongsMissingArgs() async {
+        let tools = AuxToolRegistry.searchTools()
+        let tool = tools.first { $0.name == "aux_search_songs" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
+
+    @Test("aux_search_songs accepts limit as double")
+    func searchSongsLimitAsDouble() async throws {
+        let tools = AuxToolRegistry.searchTools()
+        let tool = tools.first { $0.name == "aux_search_songs" }!
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["query": .string("Beatles"), "limit": .double(5.0)]
+        )
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_search_all throws on missing required args")
+    func searchAllMissingArgs() async {
+        let tools = AuxToolRegistry.searchTools()
+        let tool = tools.first { $0.name == "aux_search_all" }!
+        await #expect(throws: AuxError.self) {
+            _ = try await tool.execute(ServiceContainer.mock(), nil)
+        }
+    }
 }

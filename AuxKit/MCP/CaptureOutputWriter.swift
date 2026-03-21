@@ -6,19 +6,23 @@
 //
 
 import Foundation
+import os
 
 /// Captures handler JSON output into a string, for use as MCP tool result content.
 ///
-/// Thread-safety note: handlers call `write` exactly once before the caller reads
-/// `capturedString`, so no concurrent access occurs.
+/// Thread-safety: uses `OSAllocatedUnfairLock` to protect mutable state.
+/// Enforces single-write semantics — calling `write` or `writeError` more than once
+/// triggers a precondition failure.
 public final class CaptureOutputWriter: OutputWriterProtocol, @unchecked Sendable {
-    private var _capturedData: Data?
+    private let storage = OSAllocatedUnfairLock<Data?>(initialState: nil)
 
     public init() {}
 
     /// The captured JSON as a UTF-8 string, or nil if nothing was written.
     public var capturedString: String? {
-        _capturedData.flatMap { String(data: $0, encoding: .utf8) }
+        storage.withLock { data in
+            data.flatMap { String(data: $0, encoding: .utf8) }
+        }
     }
 
     public func write<T: Encodable & Sendable>(_ envelope: OutputEnvelope<T>) throws {
@@ -30,8 +34,27 @@ public final class CaptureOutputWriter: OutputWriterProtocol, @unchecked Sendabl
     }
 
     private func encodeAndStore<T: Encodable>(_ value: T) throws {
-        let encoder = JSONEncoder()
+        let encoder = JSONEncoder.aux
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        _capturedData = try encoder.encode(value)
+        let encoded = try encoder.encode(value)
+        storage.withLock { data in
+            precondition(data == nil, "CaptureOutputWriter: write called more than once")
+            data = encoded
+        }
+    }
+
+    /// Executes a handler block, captures its output, and returns the JSON string.
+    /// Throws if the handler throws or produces no output.
+    public static func capture(
+        services: ServiceContainer,
+        options: GlobalOptions = .pretty,
+        _ block: (ServiceContainer, GlobalOptions, CaptureOutputWriter) async throws -> Void
+    ) async throws -> String {
+        let writer = CaptureOutputWriter()
+        try await block(services, options, writer)
+        guard let result = writer.capturedString else {
+            throw AuxError.serviceError(message: "Handler produced no output")
+        }
+        return result
     }
 }

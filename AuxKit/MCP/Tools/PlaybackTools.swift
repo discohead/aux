@@ -14,15 +14,15 @@ extension AuxToolRegistry {
                     ]
                 )
             ) { services, args in
-                let trackId = args?["track_id"]?.intValue
-                let writer = CaptureOutputWriter()
-                try await PlayHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    trackId: trackId,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let trackId = args.optionalInt("track_id")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await PlayHandler.handle(
+                        services: services,
+                        options: options,
+                        trackId: trackId,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_pause
@@ -31,13 +31,13 @@ extension AuxToolRegistry {
                 description: "Pause playback",
                 inputSchema: MCPSchema.object(properties: [:])
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await PauseHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await PauseHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_stop
@@ -46,13 +46,13 @@ extension AuxToolRegistry {
                 description: "Stop playback",
                 inputSchema: MCPSchema.object(properties: [:])
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await StopHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await StopHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_next
@@ -61,13 +61,13 @@ extension AuxToolRegistry {
                 description: "Skip to the next track",
                 inputSchema: MCPSchema.object(properties: [:])
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await NextHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await NextHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_previous
@@ -76,13 +76,13 @@ extension AuxToolRegistry {
                 description: "Go to the previous track",
                 inputSchema: MCPSchema.object(properties: [:])
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await PreviousHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await PreviousHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_now_playing
@@ -92,13 +92,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await NowPlayingHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await NowPlayingHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_player_status
@@ -108,13 +108,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await PlayerStatusHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await PlayerStatusHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_seek
@@ -128,17 +128,15 @@ extension AuxToolRegistry {
                     required: ["position"]
                 )
             ) { services, args in
-                guard let position = args?["position"].flatMap({ Double($0) }) else {
-                    throw AuxError.usageError(message: "Missing required argument: position")
+                let position = try args.requireDouble("position")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await SeekHandler.handle(
+                        services: services,
+                        options: options,
+                        position: position,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await SeekHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    position: position,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_volume
@@ -152,17 +150,15 @@ extension AuxToolRegistry {
                     required: ["level"]
                 )
             ) { services, args in
-                guard let level = args?["level"].flatMap({ Double($0) }) else {
-                    throw AuxError.usageError(message: "Missing required argument: level")
+                let level = try args.requireDouble("level")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await VolumeHandler.handle(
+                        services: services,
+                        options: options,
+                        volume: level,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await VolumeHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    volume: level,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_shuffle
@@ -176,17 +172,15 @@ extension AuxToolRegistry {
                     required: ["enabled"]
                 )
             ) { services, args in
-                guard let enabled = args?["enabled"]?.boolValue else {
-                    throw AuxError.usageError(message: "Missing required argument: enabled")
+                let enabled = try args.requireBool("enabled")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await ShuffleHandler.handle(
+                        services: services,
+                        options: options,
+                        enabled: enabled,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await ShuffleHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    enabled: enabled,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_repeat
@@ -200,17 +194,15 @@ extension AuxToolRegistry {
                     required: ["mode"]
                 )
             ) { services, args in
-                guard let mode = args?["mode"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: mode")
+                let mode = try args.requireString("mode")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RepeatHandler.handle(
+                        services: services,
+                        options: options,
+                        mode: mode,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await RepeatHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    mode: mode,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_fast_forward
@@ -223,15 +215,15 @@ extension AuxToolRegistry {
                     ]
                 )
             ) { services, args in
-                let seconds = args?["seconds"]?.doubleValue ?? 15.0
-                let writer = CaptureOutputWriter()
-                try await FastForwardHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    seconds: seconds,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let seconds = args.optionalDouble("seconds", default: 15.0)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await FastForwardHandler.handle(
+                        services: services,
+                        options: options,
+                        seconds: seconds,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_rewind
@@ -244,15 +236,15 @@ extension AuxToolRegistry {
                     ]
                 )
             ) { services, args in
-                let seconds = args?["seconds"]?.doubleValue ?? 15.0
-                let writer = CaptureOutputWriter()
-                try await RewindHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    seconds: seconds,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                let seconds = args.optionalDouble("seconds", default: 15.0)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RewindHandler.handle(
+                        services: services,
+                        options: options,
+                        seconds: seconds,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_play_next
@@ -266,17 +258,15 @@ extension AuxToolRegistry {
                     required: ["track_id"]
                 )
             ) { services, args in
-                guard let trackId = args?["track_id"]?.intValue else {
-                    throw AuxError.usageError(message: "Missing required argument: track_id")
+                let trackId = try args.requireInt("track_id")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await PlayNextHandler.handle(
+                        services: services,
+                        options: options,
+                        trackId: trackId,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await PlayNextHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    trackId: trackId,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_add_to_queue
@@ -290,17 +280,15 @@ extension AuxToolRegistry {
                     required: ["track_id"]
                 )
             ) { services, args in
-                guard let trackId = args?["track_id"]?.intValue else {
-                    throw AuxError.usageError(message: "Missing required argument: track_id")
+                let trackId = try args.requireInt("track_id")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AddToQueueHandler.handle(
+                        services: services,
+                        options: options,
+                        trackId: trackId,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await AddToQueueHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    trackId: trackId,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_airplay_list
@@ -310,13 +298,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await AirPlayListHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AirPlayListHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_airplay_select
@@ -330,17 +318,15 @@ extension AuxToolRegistry {
                     required: ["name"]
                 )
             ) { services, args in
-                guard let name = args?["name"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: name")
+                let name = try args.requireString("name")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AirPlaySelectHandler.handle(
+                        services: services,
+                        options: options,
+                        name: name,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await AirPlaySelectHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    name: name,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_playback_airplay_current
@@ -350,13 +336,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await AirPlayCurrentHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await AirPlayCurrentHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_eq_list_presets
@@ -366,13 +352,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await EQListPresetsHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await EQListPresetsHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_eq_get
@@ -382,13 +368,13 @@ extension AuxToolRegistry {
                 inputSchema: MCPSchema.object(properties: [:]),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, _ in
-                let writer = CaptureOutputWriter()
-                try await EQGetHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await EQGetHandler.handle(
+                        services: services,
+                        options: options,
+                        writer: writer
+                    )
+                }
             },
 
             // MARK: - aux_playback_eq_set
@@ -402,17 +388,15 @@ extension AuxToolRegistry {
                     required: ["preset"]
                 )
             ) { services, args in
-                guard let preset = args?["preset"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: preset")
+                let preset = try args.requireString("preset")
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await EQSetHandler.handle(
+                        services: services,
+                        options: options,
+                        preset: preset,
+                        writer: writer
+                    )
                 }
-                let writer = CaptureOutputWriter()
-                try await EQSetHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    preset: preset,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
         ]
     }

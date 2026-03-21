@@ -19,8 +19,13 @@ public struct MCPServeCommand: AsyncParsableCommand {
         let services = ServiceContainer.live()
         let server = AuxMCPServer(services: services)
         let transport = StdioTransport()
-        try await server.start(transport: transport)
-        await server.waitUntilCompleted()
+        do {
+            try await server.start(transport: transport)
+            await server.waitUntilCompleted()
+        } catch {
+            await server.stop()
+            throw error
+        }
     }
 
     public init() {}

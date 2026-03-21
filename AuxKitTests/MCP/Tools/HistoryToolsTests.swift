@@ -58,4 +58,23 @@ struct HistoryToolsTests {
         let result = try await tool.execute(ServiceContainer.mock(), nil)
         #expect(result.contains("\"data\""))
     }
+
+    @Test("aux_history_heavy_rotation succeeds with nil args")
+    func heavyRotationNilArgs() async throws {
+        let tools = AuxToolRegistry.historyTools()
+        let tool = try #require(tools.first { $0.name == "aux_history_heavy_rotation" })
+        let result = try await tool.execute(ServiceContainer.mock(), nil)
+        #expect(result.contains("\"data\""))
+    }
+
+    @Test("aux_history_heavy_rotation accepts limit as double")
+    func heavyRotationLimitAsDouble() async throws {
+        let tools = AuxToolRegistry.historyTools()
+        let tool = try #require(tools.first { $0.name == "aux_history_heavy_rotation" })
+        let result = try await tool.execute(
+            ServiceContainer.mock(),
+            ["limit": .double(10.0)]
+        )
+        #expect(result.contains("\"data\""))
+    }
 }

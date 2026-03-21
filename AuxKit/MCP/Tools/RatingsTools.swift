@@ -18,23 +18,19 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true)
             ) { services, args in
-                guard let type = args?["type"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: type")
+                let type = try args.requireString("type")
+                let id = try args.requireString("id")
+                let library = args.optionalBool("library", default: false)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RatingsGetHandler.handle(
+                        services: services,
+                        options: options,
+                        type: type,
+                        id: id,
+                        library: library,
+                        writer: writer
+                    )
                 }
-                guard let id = args?["id"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: id")
-                }
-                let library = args?["library"]?.boolValue ?? false
-                let writer = CaptureOutputWriter()
-                try await RatingsGetHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    type: type,
-                    id: id,
-                    library: library,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_ratings_set
@@ -51,27 +47,21 @@ extension AuxToolRegistry {
                     required: ["type", "id", "rating"]
                 )
             ) { services, args in
-                guard let type = args?["type"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: type")
+                let type = try args.requireString("type")
+                let id = try args.requireString("id")
+                let rating = try args.requireInt("rating")
+                let library = args.optionalBool("library", default: false)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RatingsSetHandler.handle(
+                        services: services,
+                        options: options,
+                        type: type,
+                        id: id,
+                        rating: rating,
+                        library: library,
+                        writer: writer
+                    )
                 }
-                guard let id = args?["id"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: id")
-                }
-                guard let rating = args?["rating"]?.intValue else {
-                    throw AuxError.usageError(message: "Missing required argument: rating")
-                }
-                let library = args?["library"]?.boolValue ?? false
-                let writer = CaptureOutputWriter()
-                try await RatingsSetHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    type: type,
-                    id: id,
-                    rating: rating,
-                    library: library,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
 
             // MARK: - aux_ratings_delete
@@ -88,23 +78,19 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true)
             ) { services, args in
-                guard let type = args?["type"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: type")
+                let type = try args.requireString("type")
+                let id = try args.requireString("id")
+                let library = args.optionalBool("library", default: false)
+                return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                    try await RatingsDeleteHandler.handle(
+                        services: services,
+                        options: options,
+                        type: type,
+                        id: id,
+                        library: library,
+                        writer: writer
+                    )
                 }
-                guard let id = args?["id"]?.stringValue else {
-                    throw AuxError.usageError(message: "Missing required argument: id")
-                }
-                let library = args?["library"]?.boolValue ?? false
-                let writer = CaptureOutputWriter()
-                try await RatingsDeleteHandler.handle(
-                    services: services,
-                    options: GlobalOptions(pretty: true),
-                    type: type,
-                    id: id,
-                    library: library,
-                    writer: writer
-                )
-                return writer.capturedString ?? "{}"
             },
         ]
     }

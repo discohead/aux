@@ -28,23 +28,23 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let sort = args?["sort"]?.stringValue
-                    let title = args?["title"]?.stringValue
-                    let artist = args?["artist"]?.stringValue
-                    let album = args?["album"]?.stringValue
-                    let downloadedOnly = args?["downloaded_only"]?.boolValue ?? false
-                    let allPages = args?["all_pages"]?.boolValue ?? false
-                    let writer = CaptureOutputWriter()
-                    try await LibrarySongsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        limit: limit, offset: offset, sort: sort,
-                        title: title, artist: artist, album: album,
-                        downloadedOnly: downloadedOnly, allPages: allPages,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let limit = args.optionalInt("limit", default: 25)
+                    let offset = args.optionalInt("offset", default: 0)
+                    let sort = args.optionalString("sort")
+                    let title = args.optionalString("title")
+                    let artist = args.optionalString("artist")
+                    let album = args.optionalString("album")
+                    let downloadedOnly = args.optionalBool("downloaded_only", default: false)
+                    let allPages = args.optionalBool("all_pages", default: false)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibrarySongsHandler.handle(
+                            services: services, options: options,
+                            limit: limit, offset: offset, sort: sort,
+                            title: title, artist: artist, album: album,
+                            downloadedOnly: downloadedOnly, allPages: allPages,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -63,19 +63,19 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let sort = args?["sort"]?.stringValue
-                    let title = args?["title"]?.stringValue
-                    let artist = args?["artist"]?.stringValue
-                    let writer = CaptureOutputWriter()
-                    try await LibraryAlbumsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        limit: limit, offset: offset, sort: sort,
-                        title: title, artist: artist,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let limit = args.optionalInt("limit", default: 25)
+                    let offset = args.optionalInt("offset", default: 0)
+                    let sort = args.optionalString("sort")
+                    let title = args.optionalString("title")
+                    let artist = args.optionalString("artist")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryAlbumsHandler.handle(
+                            services: services, options: options,
+                            limit: limit, offset: offset, sort: sort,
+                            title: title, artist: artist,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -93,18 +93,18 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let sort = args?["sort"]?.stringValue
-                    let filterName = args?["filter_name"]?.stringValue
-                    let writer = CaptureOutputWriter()
-                    try await LibraryArtistsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        limit: limit, offset: offset, sort: sort,
-                        filterName: filterName,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let limit = args.optionalInt("limit", default: 25)
+                    let offset = args.optionalInt("offset", default: 0)
+                    let sort = args.optionalString("sort")
+                    let filterName = args.optionalString("filter_name")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryArtistsHandler.handle(
+                            services: services, options: options,
+                            limit: limit, offset: offset, sort: sort,
+                            filterName: filterName,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -121,16 +121,16 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let sort = args?["sort"]?.stringValue
-                    let writer = CaptureOutputWriter()
-                    try await LibraryPlaylistsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        limit: limit, offset: offset, sort: sort,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let limit = args.optionalInt("limit", default: 25)
+                    let offset = args.optionalInt("offset", default: 0)
+                    let sort = args.optionalString("sort")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryPlaylistsHandler.handle(
+                            services: services, options: options,
+                            limit: limit, offset: offset, sort: sort,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -146,15 +146,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let offset = args?["offset"]?.intValue ?? 0
-                    let writer = CaptureOutputWriter()
-                    try await LibraryMusicVideosHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        limit: limit, offset: offset,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    let limit = args.optionalInt("limit", default: 25)
+                    let offset = args.optionalInt("offset", default: 0)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryMusicVideosHandler.handle(
+                            services: services, options: options,
+                            limit: limit, offset: offset,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -172,18 +172,16 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let query = args?["query"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: query")
+                    let query = try args.requireString("query")
+                    let types = args.optionalStringArray("types", default: [])
+                    let limit = args.optionalInt("limit", default: 25)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibrarySearchHandler.handle(
+                            services: services, options: options,
+                            query: query, types: types, limit: limit,
+                            writer: writer
+                        )
                     }
-                    let types = args?["types"]?.arrayValue?.compactMap(\.stringValue) ?? []
-                    let limit = args?["limit"]?.intValue ?? 25
-                    let writer = CaptureOutputWriter()
-                    try await LibrarySearchHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        query: query, types: types, limit: limit,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -199,16 +197,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryGetTagsHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryGetTagsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -224,16 +220,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryGetLyricsHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryGetLyricsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -250,17 +244,15 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    let index = args.optionalInt("index", default: 1)
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryGetArtworkHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId, index: index,
+                            writer: writer
+                        )
                     }
-                    let index = args?["index"]?.intValue ?? 1
-                    let writer = CaptureOutputWriter()
-                    try await LibraryGetArtworkHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId, index: index,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -276,16 +268,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryGetArtworkCountHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryGetArtworkCountHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -301,16 +291,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryGetFileInfoHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryGetFileInfoHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -326,16 +314,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryGetPlayStatsHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryGetPlayStatsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -348,12 +334,12 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, _ in
-                    let writer = CaptureOutputWriter()
-                    try await LibraryListPlaylistsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryListPlaylistsHandler.handle(
+                            services: services, options: options,
+                            writer: writer
+                        )
+                    }
                 }
             ),
 
@@ -369,22 +355,20 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(readOnlyHint: true),
                 execute: { services, args in
-                    guard let playlistName = args?["playlist_name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: playlist_name")
+                    let playlistName = try args.requireString("playlist_name")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryFindDuplicatesHandler.handle(
+                            services: services, options: options,
+                            playlistName: playlistName,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryFindDuplicatesHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        playlistName: playlistName,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
         ]
     }
 
-    // MARK: - Write Tools (16)
+    // MARK: - Write Tools (17)
 
     private static func libraryWriteTools() -> [AuxToolDefinition] {
         [
@@ -400,20 +384,15 @@ extension AuxToolRegistry {
                     required: ["ids", "type"]
                 ),
                 execute: { services, args in
-                    guard let idsArray = args?["ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: ids")
+                    let ids = try args.requireStringArray("ids")
+                    let type = try args.requireString("type")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryAddHandler.handle(
+                            services: services, options: options,
+                            ids: ids, type: type,
+                            writer: writer
+                        )
                     }
-                    let ids = idsArray.compactMap(\.stringValue)
-                    guard let type = args?["type"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: type")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryAddHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        ids: ids, type: type,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -430,18 +409,16 @@ extension AuxToolRegistry {
                     required: ["name"]
                 ),
                 execute: { services, args in
-                    guard let name = args?["name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: name")
+                    let name = try args.requireString("name")
+                    let description = args.optionalString("description")
+                    let trackIds = args.optionalStringArray("track_ids", default: [])
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryCreatePlaylistHandler.handle(
+                            services: services, options: options,
+                            name: name, description: description, trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    let description = args?["description"]?.stringValue
-                    let trackIds = args?["track_ids"]?.arrayValue?.compactMap(\.stringValue) ?? []
-                    let writer = CaptureOutputWriter()
-                    try await LibraryCreatePlaylistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        name: name, description: description, trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -457,20 +434,15 @@ extension AuxToolRegistry {
                     required: ["playlist_id", "track_ids"]
                 ),
                 execute: { services, args in
-                    guard let playlistId = args?["playlist_id"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: playlist_id")
+                    let playlistId = try args.requireString("playlist_id")
+                    let trackIds = try args.requireStringArray("track_ids")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryAddToPlaylistHandler.handle(
+                            services: services, options: options,
+                            playlistId: playlistId, trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
-                    }
-                    let trackIds = trackIdsArray.compactMap(\.stringValue)
-                    let writer = CaptureOutputWriter()
-                    try await LibraryAddToPlaylistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        playlistId: playlistId, trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -486,22 +458,15 @@ extension AuxToolRegistry {
                     required: ["track_id", "fields"]
                 ),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    let fields = try args.requireStringMap("fields")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibrarySetTagsHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId, fields: fields,
+                            writer: writer
+                        )
                     }
-                    guard let fieldsObj = args?["fields"]?.objectValue else {
-                        throw AuxError.usageError(message: "Missing required argument: fields")
-                    }
-                    let fields: [String: String] = fieldsObj.reduce(into: [:]) { result, pair in
-                        if let str = pair.value.stringValue { result[pair.key] = str }
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibrarySetTagsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId, fields: fields,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -517,23 +482,15 @@ extension AuxToolRegistry {
                     required: ["track_ids", "fields"]
                 ),
                 execute: { services, args in
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
+                    let trackIds = try args.requireIntArray("track_ids")
+                    let fields = try args.requireStringMap("fields")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryBatchSetTagsHandler.handle(
+                            services: services, options: options,
+                            trackIds: trackIds, fields: fields,
+                            writer: writer
+                        )
                     }
-                    let trackIds = trackIdsArray.compactMap(\.intValue)
-                    guard let fieldsObj = args?["fields"]?.objectValue else {
-                        throw AuxError.usageError(message: "Missing required argument: fields")
-                    }
-                    let fields: [String: String] = fieldsObj.reduce(into: [:]) { result, pair in
-                        if let str = pair.value.stringValue { result[pair.key] = str }
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryBatchSetTagsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackIds: trackIds, fields: fields,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -549,19 +506,15 @@ extension AuxToolRegistry {
                     required: ["track_id", "text"]
                 ),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    let text = try args.requireString("text")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibrarySetLyricsHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId, text: text,
+                            writer: writer
+                        )
                     }
-                    guard let text = args?["text"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: text")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibrarySetLyricsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId, text: text,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -577,19 +530,15 @@ extension AuxToolRegistry {
                     required: ["track_id", "image_path"]
                 ),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    let imagePath = try args.requireString("image_path")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibrarySetArtworkHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId, imagePath: imagePath,
+                            writer: writer
+                        )
                     }
-                    guard let imagePath = args?["image_path"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: image_path")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibrarySetArtworkHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId, imagePath: imagePath,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -605,22 +554,15 @@ extension AuxToolRegistry {
                     required: ["track_id", "fields"]
                 ),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    let fields = try args.requireStringMap("fields")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibrarySetPlayStatsHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId, fields: fields,
+                            writer: writer
+                        )
                     }
-                    guard let fieldsObj = args?["fields"]?.objectValue else {
-                        throw AuxError.usageError(message: "Missing required argument: fields")
-                    }
-                    let fields: [String: String] = fieldsObj.reduce(into: [:]) { result, pair in
-                        if let str = pair.value.stringValue { result[pair.key] = str }
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibrarySetPlayStatsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId, fields: fields,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -636,17 +578,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true),
                 execute: { services, args in
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
+                    let trackIds = try args.requireIntArray("track_ids")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryResetPlayStatsHandler.handle(
+                            services: services, options: options,
+                            trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    let trackIds = trackIdsArray.compactMap(\.intValue)
-                    let writer = CaptureOutputWriter()
-                    try await LibraryResetPlayStatsHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -661,16 +600,14 @@ extension AuxToolRegistry {
                     required: ["track_id"]
                 ),
                 execute: { services, args in
-                    guard let trackId = args?["track_id"]?.intValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_id")
+                    let trackId = try args.requireInt("track_id")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryRevealHandler.handle(
+                            services: services, options: options,
+                            trackId: trackId,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryRevealHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackId: trackId,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -686,17 +623,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true),
                 execute: { services, args in
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
+                    let trackIds = try args.requireIntArray("track_ids")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryDeleteHandler.handle(
+                            services: services, options: options,
+                            trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    let trackIds = trackIdsArray.compactMap(\.intValue)
-                    let writer = CaptureOutputWriter()
-                    try await LibraryDeleteHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -711,17 +645,14 @@ extension AuxToolRegistry {
                     required: ["track_ids"]
                 ),
                 execute: { services, args in
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
+                    let trackIds = try args.requireIntArray("track_ids")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryConvertHandler.handle(
+                            services: services, options: options,
+                            trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    let trackIds = trackIdsArray.compactMap(\.intValue)
-                    let writer = CaptureOutputWriter()
-                    try await LibraryConvertHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -737,18 +668,15 @@ extension AuxToolRegistry {
                     required: ["paths"]
                 ),
                 execute: { services, args in
-                    guard let pathsArray = args?["paths"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: paths")
+                    let paths = try args.requireStringArray("paths")
+                    let toPlaylist = args.optionalString("to_playlist")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryImportHandler.handle(
+                            services: services, options: options,
+                            paths: paths, toPlaylist: toPlaylist,
+                            writer: writer
+                        )
                     }
-                    let paths = pathsArray.compactMap(\.stringValue)
-                    let toPlaylist = args?["to_playlist"]?.stringValue
-                    let writer = CaptureOutputWriter()
-                    try await LibraryImportHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        paths: paths, toPlaylist: toPlaylist,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -764,16 +692,14 @@ extension AuxToolRegistry {
                 ),
                 annotations: Tool.Annotations(destructiveHint: true),
                 execute: { services, args in
-                    guard let name = args?["name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: name")
+                    let name = try args.requireString("name")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryDeletePlaylistHandler.handle(
+                            services: services, options: options,
+                            name: name,
+                            writer: writer
+                        )
                     }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryDeletePlaylistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        name: name,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -789,19 +715,15 @@ extension AuxToolRegistry {
                     required: ["name", "new_name"]
                 ),
                 execute: { services, args in
-                    guard let name = args?["name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: name")
+                    let name = try args.requireString("name")
+                    let newName = try args.requireString("new_name")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryRenamePlaylistHandler.handle(
+                            services: services, options: options,
+                            name: name, newName: newName,
+                            writer: writer
+                        )
                     }
-                    guard let newName = args?["new_name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: new_name")
-                    }
-                    let writer = CaptureOutputWriter()
-                    try await LibraryRenamePlaylistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        name: name, newName: newName,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -817,20 +739,15 @@ extension AuxToolRegistry {
                     required: ["playlist_name", "track_ids"]
                 ),
                 execute: { services, args in
-                    guard let playlistName = args?["playlist_name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: playlist_name")
+                    let playlistName = try args.requireString("playlist_name")
+                    let trackIds = try args.requireIntArray("track_ids")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryRemoveFromPlaylistHandler.handle(
+                            services: services, options: options,
+                            playlistName: playlistName, trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
-                    }
-                    let trackIds = trackIdsArray.compactMap(\.intValue)
-                    let writer = CaptureOutputWriter()
-                    try await LibraryRemoveFromPlaylistHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        playlistName: playlistName, trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
 
@@ -846,20 +763,15 @@ extension AuxToolRegistry {
                     required: ["playlist_name", "track_ids"]
                 ),
                 execute: { services, args in
-                    guard let playlistName = args?["playlist_name"]?.stringValue else {
-                        throw AuxError.usageError(message: "Missing required argument: playlist_name")
+                    let playlistName = try args.requireString("playlist_name")
+                    let trackIds = try args.requireIntArray("track_ids")
+                    return try await CaptureOutputWriter.capture(services: services) { services, options, writer in
+                        try await LibraryReorderTracksHandler.handle(
+                            services: services, options: options,
+                            playlistName: playlistName, trackIds: trackIds,
+                            writer: writer
+                        )
                     }
-                    guard let trackIdsArray = args?["track_ids"]?.arrayValue else {
-                        throw AuxError.usageError(message: "Missing required argument: track_ids")
-                    }
-                    let trackIds = trackIdsArray.compactMap(\.intValue)
-                    let writer = CaptureOutputWriter()
-                    try await LibraryReorderTracksHandler.handle(
-                        services: services, options: GlobalOptions(pretty: true),
-                        playlistName: playlistName, trackIds: trackIds,
-                        writer: writer
-                    )
-                    return writer.capturedString ?? "{}"
                 }
             ),
         ]
