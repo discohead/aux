@@ -25,6 +25,7 @@ public struct AuxCommand: AsyncParsableCommand {
             HistoryCommand.self,
             FavoritesCommand.self,
             SummariesCommand.self,
+            MCPCommand.self,
         ]
     )
 
