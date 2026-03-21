@@ -92,6 +92,52 @@ ln -sf /Applications/aux.app/Contents/MacOS/aux /usr/local/bin/aux
 
 **Warning:** Never use `cp -R` to overwrite `.app` bundles. It fails silently with embedded framework symlinks, leaving stale binaries in place. Always `rm -rf` the old bundle first, then copy with `ditto`.
 
+## MCP Server
+
+Aux includes a native MCP server exposing all CLI functionality as MCP tools.
+
+### Running
+
+```bash
+aux mcp serve
+```
+
+### Claude Desktop Configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "aux": {
+      "type": "stdio",
+      "command": "/usr/local/bin/aux",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+### Claude Code Configuration
+
+Add to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "aux": {
+      "type": "stdio",
+      "command": "/usr/local/bin/aux",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+### Tool Groups
+
+100+ tools across 12 groups: `aux_auth_*` (3), `aux_search_*` (10), `aux_catalog_*` (20), `aux_library_*` (31), `aux_playback_*` (21), `aux_recommendations_*` (1), `aux_recently_played_*` (2), `aux_ratings_*` (3), `aux_api_*` (4), `aux_history_*` (3), `aux_favorites_*` (1), `aux_summaries_*` (1)
+
 ## Key Reference
 
 - Full design doc: `context/building-aux.md`

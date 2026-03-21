@@ -334,6 +334,7 @@
 			name = AuxKit;
 			packageProductDependencies = (
 				17FE65022F69100000D3ACE3 /* ArgumentParser */,
+				17AAAA022F7C000200D3ACE3 /* MCP */,
 			);
 			productName = AuxKit;
 			productReference = 17FE64962F69088D00D3ACE3 /* AuxKit.framework */;
@@ -432,6 +433,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				17FE64E72F6909E700D3ACE3 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				17AAAA012F7C000100D3ACE3 /* XCRemoteSwiftPackageReference "swift-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17506B402F67A612003923E9 /* Products */;
@@ -1070,6 +1072,14 @@
 				minimumVersion = 1.7.0;
 			};
 		};
+		17AAAA012F7C000100D3ACE3 /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.11.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1087,6 +1097,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 17FE64E72F6909E700D3ACE3 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
 			productName = ArgumentParser;
+		};
+		17AAAA022F7C000200D3ACE3 /* MCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17AAAA012F7C000100D3ACE3 /* XCRemoteSwiftPackageReference "swift-sdk" */;
+			productName = MCP;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

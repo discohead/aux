@@ -29,6 +29,9 @@ public struct GlobalOptions: Sendable {
         JSONOutputWriter(pretty: pretty, destination: destination)
     }
 
+    /// Preset for MCP tool output: pretty-printed JSON.
+    public static let pretty = GlobalOptions(pretty: true)
+
     /// Prints a message to stderr, unless quiet mode is enabled.
     public func stderrPrint(_ message: String) {
         guard !quiet else { return }
